@@ -155,10 +155,8 @@ st.caption("상품을 조회하고 재고를 추가하거나 수정해 보세요
 #     "🚚 입출고",
 #     "📝 일괄 편집"
 # ])
-tab1, tab2, tab3 = st.tabs([
-    "📊 현황",
-    "🔎 재고 조회",
-    "➕ 상품 추가"
+tab1 = st.tabs([
+    "📊 현황"
 ])
 
 
@@ -278,187 +276,187 @@ with tab1:
 # ==================================================
 # 탭 2. 재고 조회
 # ==================================================
-with tab2:
-    st.subheader("조건에 맞는 상품 조회")
+# with tab2:
+#     st.subheader("조건에 맞는 상품 조회")
 
-    search_col1, search_col2 = st.columns(2)
+#     search_col1, search_col2 = st.columns(2)
 
-    with search_col1:
-        keyword = st.text_input(
-            "상품명 검색",
-            placeholder="상품명의 일부를 입력하세요."
-        )
+#     with search_col1:
+#         keyword = st.text_input(
+#             "상품명 검색",
+#             placeholder="상품명의 일부를 입력하세요."
+#         )
 
-        category_options = sorted(
-            df["분류"].unique()
-        )
+#         category_options = sorted(
+#             df["분류"].unique()
+#         )
 
-        selected_categories = st.multiselect(
-            "분류 선택",
-            options=category_options,
-            default=category_options
-        )
+#         selected_categories = st.multiselect(
+#             "분류 선택",
+#             options=category_options,
+#             default=category_options
+#         )
 
-    with search_col2:
-        maximum_price = int(df["가격"].max())
+#     with search_col2:
+#         maximum_price = int(df["가격"].max())
 
-        price_range = st.slider(
-            "가격 범위",
-            min_value=0,
-            max_value=maximum_price,
-            value=(0, maximum_price),
-            step=100
-        )
+#         price_range = st.slider(
+#             "가격 범위",
+#             min_value=0,
+#             max_value=maximum_price,
+#             value=(0, maximum_price),
+#             step=100
+#         )
 
-        stock_status = st.radio(
-            "재고 상태",
-            options=["전체", "정상", "부족", "품절"],
-            horizontal=True
-        )
+#         stock_status = st.radio(
+#             "재고 상태",
+#             options=["전체", "정상", "부족", "품절"],
+#             horizontal=True
+#         )
 
-    # 원본 DataFrame 복사
-    result_df = df.copy()
+#     # 원본 DataFrame 복사
+#     result_df = df.copy()
 
-    # 1. 상품명 조건
-    if keyword:
-        name_condition = result_df["상품명"].str.contains(
-            keyword,
-            case=False,
-            na=False
-        )
+#     # 1. 상품명 조건
+#     if keyword:
+#         name_condition = result_df["상품명"].str.contains(
+#             keyword,
+#             case=False,
+#             na=False
+#         )
 
-        result_df = result_df[name_condition]
+#         result_df = result_df[name_condition]
 
-    # 2. 분류 조건
-    category_condition = result_df["분류"].isin(
-        selected_categories
-    )
+#     # 2. 분류 조건
+#     category_condition = result_df["분류"].isin(
+#         selected_categories
+#     )
 
-    result_df = result_df[category_condition]
+#     result_df = result_df[category_condition]
 
-    # 3. 가격 범위 조건
-    minimum_price = price_range[0]
-    maximum_price = price_range[1]
+#     # 3. 가격 범위 조건
+#     minimum_price = price_range[0]
+#     maximum_price = price_range[1]
 
-    price_condition = (
-        (result_df["가격"] >= minimum_price) &
-        (result_df["가격"] <= maximum_price)
-    )
+#     price_condition = (
+#         (result_df["가격"] >= minimum_price) &
+#         (result_df["가격"] <= maximum_price)
+#     )
 
-    result_df = result_df[price_condition]
+#     result_df = result_df[price_condition]
 
-    # 4. 재고 상태 조건
-    if stock_status != "전체":
-        status_condition = (
-            result_df["재고상태"] == stock_status
-        )
+#     # 4. 재고 상태 조건
+#     if stock_status != "전체":
+#         status_condition = (
+#             result_df["재고상태"] == stock_status
+#         )
 
-        result_df = result_df[status_condition]
+#         result_df = result_df[status_condition]
 
-    st.write(f"검색 결과: **{len(result_df)}개**")
+#     st.write(f"검색 결과: **{len(result_df)}개**")
 
-    if len(result_df) == 0:
-        st.warning("조건에 맞는 상품이 없습니다.")
+#     if len(result_df) == 0:
+#         st.warning("조건에 맞는 상품이 없습니다.")
 
-    else:
-        st.dataframe(
-            result_df,
-            use_container_width=True,
-            hide_index=True
-        )
+#     else:
+#         st.dataframe(
+#             result_df,
+#             use_container_width=True,
+#             hide_index=True
+#         )
 
 
-# ==================================================
-# 탭 3. 상품 추가
-# ==================================================
-with tab3:
-    st.subheader("새로운 상품 등록")
+# # ==================================================
+# # 탭 3. 상품 추가
+# # ==================================================
+# with tab3:
+#     st.subheader("새로운 상품 등록")
 
-    # form 안의 위젯은 제출 버튼을 누를 때 한꺼번에 처리
-    with st.form("add_product_form"):
+#     # form 안의 위젯은 제출 버튼을 누를 때 한꺼번에 처리
+#     with st.form("add_product_form"):
 
-        add_col1, add_col2 = st.columns(2)
+#         add_col1, add_col2 = st.columns(2)
 
-        with add_col1:
-            new_code = st.text_input(
-                "상품 코드",
-                placeholder="예: P009"
-            )
+#         with add_col1:
+#             new_code = st.text_input(
+#                 "상품 코드",
+#                 placeholder="예: P009"
+#             )
 
-            new_name = st.text_input(
-                "상품명",
-                placeholder="예: 딸기우유"
-            )
+#             new_name = st.text_input(
+#                 "상품명",
+#                 placeholder="예: 딸기우유"
+#             )
 
-            new_category = st.selectbox(
-                "분류",
-                options=[
-                    "음료",
-                    "과자",
-                    "식품",
-                    "유제품",
-                    "생활용품",
-                    "기타"
-                ]
-            )
+#             new_category = st.selectbox(
+#                 "분류",
+#                 options=[
+#                     "음료",
+#                     "과자",
+#                     "식품",
+#                     "유제품",
+#                     "생활용품",
+#                     "기타"
+#                 ]
+#             )
 
-        with add_col2:
-            new_price = st.number_input(
-                "가격",
-                min_value=0,
-                step=100
-            )
+#         with add_col2:
+#             new_price = st.number_input(
+#                 "가격",
+#                 min_value=0,
+#                 step=100
+#             )
 
-            new_stock = st.number_input(
-                "현재 재고",
-                min_value=0,
-                step=1
-            )
+#             new_stock = st.number_input(
+#                 "현재 재고",
+#                 min_value=0,
+#                 step=1
+#             )
 
-            new_safety_stock = st.number_input(
-                "안전 재고",
-                min_value=0,
-                step=1
-            )
+#             new_safety_stock = st.number_input(
+#                 "안전 재고",
+#                 min_value=0,
+#                 step=1
+#             )
 
-        add_button = st.form_submit_button(
-            "상품 등록",
-            use_container_width=True
-        )
+#         add_button = st.form_submit_button(
+#             "상품 등록",
+#             use_container_width=True
+#         )
 
-    if add_button:
+#     if add_button:
 
-        new_code = new_code.strip().upper()
-        new_name = new_name.strip()
+#         new_code = new_code.strip().upper()
+#         new_name = new_name.strip()
 
-        # 입력값 검사
-        if new_code == "" or new_name == "":
-            st.error("상품 코드와 상품명을 모두 입력하세요.")
+#         # 입력값 검사
+#         if new_code == "" or new_name == "":
+#             st.error("상품 코드와 상품명을 모두 입력하세요.")
 
-        elif new_code in df["상품코드"].values:
-            st.error("이미 사용 중인 상품 코드입니다.")
+#         elif new_code in df["상품코드"].values:
+#             st.error("이미 사용 중인 상품 코드입니다.")
 
-        else:
-            new_product = pd.DataFrame({
-                "상품코드": [new_code],
-                "상품명": [new_name],
-                "분류": [new_category],
-                "가격": [new_price],
-                "재고": [new_stock],
-                "안전재고": [new_safety_stock]
-            })
+#         else:
+#             new_product = pd.DataFrame({
+#                 "상품코드": [new_code],
+#                 "상품명": [new_name],
+#                 "분류": [new_category],
+#                 "가격": [new_price],
+#                 "재고": [new_stock],
+#                 "안전재고": [new_safety_stock]
+#             })
 
-            # 기존 DataFrame과 새로운 DataFrame 합치기
-            updated_df = pd.concat(
-                [df, new_product],
-                ignore_index=True
-            )
+#             # 기존 DataFrame과 새로운 DataFrame 합치기
+#             updated_df = pd.concat(
+#                 [df, new_product],
+#                 ignore_index=True
+#             )
 
-            updated_df = update_inventory_data(updated_df)
-            st.session_state.inventory = updated_df
+#             updated_df = update_inventory_data(updated_df)
+#             st.session_state.inventory = updated_df
 
-            st.success(f"{new_name} 상품이 등록되었습니다.")
-            st.rerun()
+#             st.success(f"{new_name} 상품이 등록되었습니다.")
+#             st.rerun()
 
 
 # ==================================================
