@@ -155,122 +155,122 @@ st.caption("상품을 조회하고 재고를 추가하거나 수정해 보세요
 #     "🚚 입출고",
 #     "📝 일괄 편집"
 # ])
-tab1 = st.tabs([
-    "📊 현황"
-])
+# tab1 = st.tabs([
+#     "📊 현황"
+# ])
 
 
 # ==================================================
 # 탭 1. 재고 현황
 # ==================================================
-with tab1:
-    st.subheader("재고 현황")
+# with tab1:
+st.subheader("재고 현황")
 
-    # 요약 정보 계산
-    total_products = len(df)
-    total_stock = df["재고"].sum()
-    total_value = df["재고금액"].sum()
+# 요약 정보 계산
+total_products = len(df)
+total_stock = df["재고"].sum()
+total_value = df["재고금액"].sum()
 
-    shortage_count = len(
-        df[df["재고상태"] == "부족"]
+shortage_count = len(
+    df[df["재고상태"] == "부족"]
+)
+
+sold_out_count = len(
+    df[df["재고상태"] == "품절"]
+)
+
+# metric 위젯 배치 (중요한 숫자 값을 카드 형태로 강조해서 보여준다)
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    st.metric(
+        label="등록 상품",
+        value=f"{total_products}개"
     )
 
-    sold_out_count = len(
-        df[df["재고상태"] == "품절"]
+with col2:
+    st.metric(
+        label="전체 재고",
+        value=f"{total_stock}개"
     )
 
-    # metric 위젯 배치 (중요한 숫자 값을 카드 형태로 강조해서 보여준다)
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    with col1:
-        st.metric(
-            label="등록 상품",
-            value=f"{total_products}개"
-        )
-
-    with col2:
-        st.metric(
-            label="전체 재고",
-            value=f"{total_stock}개"
-        )
-
-    with col3:
-        st.metric(
-            label="전체 재고 금액",
-            value=f"{total_value:,}원"
-        )
-
-    with col4:
-        st.metric(
-            label="재고 부족",
-            value=f"{shortage_count}개"
-        )
-
-    with col5:
-        st.metric(
-            label="품절",
-            value=f"{sold_out_count}개"
-        )
-
-    st.divider()
-
-    # left_column, right_column = st.columns([3, 2])
-
-    # with left_column:
-    #     st.markdown("#### 전체 상품 목록")
-
-    #     st.dataframe(
-    #         df,
-    #         width='stretch',
-    #         hide_index=True,
-    #         column_config={
-    #             "가격": st.column_config.NumberColumn(
-    #                 "가격",
-    #                 format="%d원"
-    #             ),
-    #             "재고금액": st.column_config.NumberColumn(
-    #                 "재고금액",
-    #                 format="%d원"
-    #             )
-    #         }
-    #     )
-
-    # with right_column:
-    st.markdown("#### 분류별 재고 수량")
-
-    category_stock = (
-        df.groupby("분류")["재고"]
-        .sum()
-        .sort_values(ascending=False)
+with col3:
+    st.metric(
+        label="전체 재고 금액",
+        value=f"{total_value:,}원"
     )
 
-    st.bar_chart(category_stock)
+with col4:
+    st.metric(
+        label="재고 부족",
+        value=f"{shortage_count}개"
+    )
 
-    st.divider()
-    st.markdown("#### 관리가 필요한 상품")
+with col5:
+    st.metric(
+        label="품절",
+        value=f"{sold_out_count}개"
+    )
 
-    warning_df = df[
-        df["재고상태"].isin(["부족", "품절"])
-    ]
+st.divider()
 
-    if len(warning_df) == 0:
-        st.success("현재 재고가 부족한 상품이 없습니다.")
+# left_column, right_column = st.columns([3, 2])
 
-    else:
-        st.dataframe(
-            warning_df[
-                [
-                    "상품코드",
-                    "상품명",
-                    "분류",
-                    "재고",
-                    "안전재고",
-                    "재고상태"
-                ]
-            ],
-            use_container_width=True,
-            hide_index=True
-        )
+# with left_column:
+#     st.markdown("#### 전체 상품 목록")
+
+#     st.dataframe(
+#         df,
+#         width='stretch',
+#         hide_index=True,
+#         column_config={
+#             "가격": st.column_config.NumberColumn(
+#                 "가격",
+#                 format="%d원"
+#             ),
+#             "재고금액": st.column_config.NumberColumn(
+#                 "재고금액",
+#                 format="%d원"
+#             )
+#         }
+#     )
+
+# with right_column:
+st.markdown("#### 분류별 재고 수량")
+
+category_stock = (
+    df.groupby("분류")["재고"]
+    .sum()
+    .sort_values(ascending=False)
+)
+
+st.bar_chart(category_stock)
+
+st.divider()
+st.markdown("#### 관리가 필요한 상품")
+
+warning_df = df[
+    df["재고상태"].isin(["부족", "품절"])
+]
+
+if len(warning_df) == 0:
+    st.success("현재 재고가 부족한 상품이 없습니다.")
+
+else:
+    st.dataframe(
+        warning_df[
+            [
+                "상품코드",
+                "상품명",
+                "분류",
+                "재고",
+                "안전재고",
+                "재고상태"
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
 
 
 # ==================================================
