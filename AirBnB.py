@@ -100,7 +100,7 @@ with col1:
 with col2:
     min_capacity = st.slider(
         '최대 수용 인원',
-        min_value=1,
+        min_value=2,
         max_value=5,
         value=2
     )
