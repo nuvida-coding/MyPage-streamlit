@@ -93,7 +93,7 @@ col1, col2, col3, col4 = st.columns(4)
 with col1:
     min_rooms = st.slider(
         '최소 방 개수',
-        min_value=2,
+        min_value=1,
         max_value=15,
         value=4
     )
