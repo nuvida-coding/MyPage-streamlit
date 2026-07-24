@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-
+# https://mypage-airbnb.streamlit.app/
 CSV_PATH = './airbnb.csv'
 
 

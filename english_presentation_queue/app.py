@@ -6,6 +6,8 @@ import io
 import traceback
 import streamlit as st
 
+# https://english-presentation-list.streamlit.app/
+
 
 st.set_page_config(
     page_title="영어 발표 순서 정하기",
@@ -24,7 +26,7 @@ QUESTIONS = [
         "title": "1. 이름을 알파벳 순서대로 정렬하기",
         "text": """
 Mike, Jully, Ann, Bella, Daniel, Ethan이 발표 신청을 했습니다.  
-먼저 이름을 **알파벳 오름차순**으로 정렬하세요.
+먼저 이름을 <b>알파벳 오름차순</b>으로 정렬하세요.
 """,
         "target": ["Ann", "Bella", "Daniel", "Ethan", "Jully", "Mike"],
         "hints": ["sort()"],
@@ -33,8 +35,8 @@ Mike, Jully, Ann, Bella, Daniel, Ethan이 발표 신청을 했습니다.
     {
         "title": "2. 두 학생을 맨 뒤에 추가하기",
         "text": """
-그 뒤에 Isaac과 Chris가 추가로 발표 신청을 했습니다.  
-두 학생을 **Isaac, Chris 순서대로 맨 뒤에** 추가하세요.
+뒤 늦게 Isaac과 Chris가 추가로 발표 신청을 했습니다.  
+두 학생을 <b>Isaac, Chris 순서대로 맨 뒤에</b> 추가하세요.
 """,
         "target": [
             "Ann", "Bella", "Daniel", "Ethan",
@@ -47,7 +49,7 @@ Mike, Jully, Ann, Bella, Daniel, Ethan이 발표 신청을 했습니다.
         "title": "3. Daniel 바로 뒤에 Noah 추가하기",
         "text": """
 Noah는 Daniel 바로 다음 순서에 발표하고 싶어 합니다.  
-Daniel의 위치를 찾아 **바로 뒤에 Noah를 추가**하세요.
+Daniel의 위치를 찾아 <b>바로 뒤에 Noah를 추가</b>하세요.
 """,
         "target": [
             "Ann", "Bella", "Daniel", "Noah", "Ethan",
@@ -60,7 +62,7 @@ Daniel의 위치를 찾아 **바로 뒤에 Noah를 추가**하세요.
         "title": "4. 발표를 취소한 학생 삭제하기",
         "text": """
 Jully가 발표를 취소했습니다.  
-현재 명단에서 **Jully를 삭제**하세요.
+현재 명단에서 <b>Jully를 삭제</b>하세요.
 """,
         "target": [
             "Ann", "Bella", "Daniel", "Noah",
@@ -73,7 +75,7 @@ Jully가 발표를 취소했습니다.
         "title": "5. 맨 뒤 학생을 Bella 앞으로 이동하기",
         "text": """
 맨 뒤에 있는 학생이 Bella보다 먼저 발표하고 싶어 합니다.  
-맨 뒤 학생을 꺼낸 뒤 **Bella 바로 앞에 삽입**하세요.
+<b>맨 뒤 학생</b>을 꺼낸 뒤 <b>Bella 바로 앞으로</b> 옮기세요.
 """,
         "target": [
             "Ann", "Chris", "Bella", "Daniel",
@@ -85,11 +87,7 @@ Jully가 발표를 취소했습니다.
     {
         "title": "6. 오늘의 첫 발표자 정하기",
         "text": """
-현재 학생들의 이름을 **알파벳 내림차순으로 정렬했을 때 3번째 학생**을 찾으세요.  
-그 학생을 현재 명단에서 찾아 **맨 앞으로 이동**시키세요.
-
-현재 명단 전체를 내림차순으로 바꾸는 것이 아니라,  
-내림차순 명단에서 학생 한 명만 찾은 뒤 현재 명단의 맨 앞으로 옮겨야 합니다.
+<b>알파벳 내림차순으로 3번째 학생</b>을 현재 명단에서 <b>맨 앞 순서로</b> 이동시키세요.
 """,
         "target": [
             "Isaac", "Ann", "Chris", "Bella",
@@ -118,9 +116,6 @@ AVATAR_INFO = {
 # =========================================================
 if "queue" not in st.session_state:
     st.session_state.queue = INITIAL_QUEUE.copy()
-
-if "previous_queue" not in st.session_state:
-    st.session_state.previous_queue = INITIAL_QUEUE.copy()
 
 if "step" not in st.session_state:
     st.session_state.step = 0
@@ -151,7 +146,7 @@ ALLOWED_LIST_METHODS = {
     "sort", "append", "insert", "remove", "pop", "index", "reverse"
 }
 ALLOWED_FUNCTIONS = {"sorted", "len", "print"}
-PROTECTED_NAMES = {"queue", "sorted", "len", "print"}
+PROTECTED_NAMES = {"sorted", "len", "print"}
 
 
 class SafeCodeValidator(ast.NodeVisitor):
@@ -247,13 +242,15 @@ def execute_student_code(code, current_queue):
                 safe_locals,
             )
 
-        if not isinstance(working_queue, list):
+        result_queue = safe_locals.get("queue")
+
+        if not isinstance(result_queue, list):
             raise TypeError("queue는 리스트로 유지되어야 합니다.")
 
-        if not all(isinstance(name, str) for name in working_queue):
+        if not all(isinstance(name, str) for name in result_queue):
             raise TypeError("명단에는 학생 이름 문자열만 들어갈 수 있습니다.")
 
-        return working_queue, output_buffer.getvalue(), None
+        return result_queue, output_buffer.getvalue(), None
 
     except Exception:
         return working_queue, output_buffer.getvalue(), traceback.format_exc()
@@ -289,23 +286,7 @@ def make_avatar_svg(name):
     return f"data:image/svg+xml;base64,{encoded}"
 
 
-def render_students(queue, previous_queue):
-    previous_items = []
-    for name in previous_queue:
-        shirt_color = AVATAR_INFO[name][0]
-        previous_items.append(
-            f"""
-            <div class="previous-student" title="{html.escape(name)}">
-                <div
-                    class="previous-circle"
-                    style="background-color: {shirt_color};"
-                >
-                    {html.escape(name[0])}
-                </div>
-            </div>
-            """
-        )
-
+def render_students(queue):
     cards = []
     for order, name in enumerate(queue, start=1):
         avatar = make_avatar_svg(name)
@@ -322,13 +303,6 @@ def render_students(queue, previous_queue):
     st.html(
         f"""
         <div class="stage">
-            <div class="previous-order">
-                <div class="previous-label">이전 순서</div>
-                <div class="previous-row">
-                    {''.join(previous_items)}
-                </div>
-            </div>
-
             <div class="stage-title">🎤 현재 발표 순서</div>
             <div class="student-row">
                 {''.join(cards)}
@@ -336,6 +310,7 @@ def render_students(queue, previous_queue):
         </div>
         """
     )
+
 
 
 st.html(
@@ -360,49 +335,6 @@ st.html(
                 linear-gradient(#F9F6EE 0 72%, #D8B384 72% 100%);
             box-shadow: 0 10px 0 rgba(41, 45, 62, 0.16);
             overflow-x: auto;
-        }
-
-        .previous-order {
-            margin-bottom: 0.8rem;
-            padding-bottom: 0.8rem;
-            border-bottom: 1px dashed rgba(41, 45, 62, 0.35);
-        }
-
-        .previous-label {
-            margin-bottom: 0.45rem;
-            font-size: 0.82rem;
-            font-weight: 800;
-            color: #666B7A;
-        }
-
-        .previous-row {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.45rem;
-        }
-
-        .previous-student {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #626777;
-        }
-
-        .previous-circle {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 25px;
-            height: 25px;
-            border: 1.5px solid #73798A;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.8);
-            color: #292D3E;
-            font-size: 0.75rem;
-            font-weight: 900;
         }
 
         .stage-title {
@@ -563,10 +495,10 @@ st.html(
 st.title("🎤 영어 발표 순서 정하기")
 st.subheader("리스트 함수를 사용해 학생들을 올바른 발표 순서로 이동시켜 보세요.")
 
-render_students(st.session_state.queue, st.session_state.previous_queue)
-
 progress = st.session_state.step / len(QUESTIONS)
 st.progress(progress, text=f"진행 상황: {st.session_state.step} / {len(QUESTIONS)}")
+
+render_students(st.session_state.queue)
 
 if st.session_state.step < len(QUESTIONS):
     question = QUESTIONS[st.session_state.step]
@@ -577,42 +509,37 @@ if st.session_state.step < len(QUESTIONS):
             <div class="problem-number">문제 {st.session_state.step + 1}</div>
             <h3>{question["title"]}</h3>
             <div>{question["text"]}</div>
-            <div class="queue-view">
-                queue = {html.escape(str(st.session_state.queue))}
-            </div>
         </div>
         """
         # unsafe_allow_html=True,
     )
 
     code_key = f"student_code_{st.session_state.code_version}"
-    student_code = st.text_area(
-        "파이썬 코드 입력",
-        key=code_key,
-        height=145,
-        placeholder='코드를 입력하세요.'
-        # placeholder=question["placeholder"],
-        # help="리스트 이름은 queue입니다. 여러 줄의 코드를 입력할 수 있습니다.",
-    )
+    code_col, button_col = st.columns([5, 1])
 
-    run_col, reset_col = st.columns([4, 1])
+    with code_col:
+        student_code = st.text_area(
+            "파이썬 코드 입력",
+            value=f"queue = {st.session_state.queue!r}\n",
+            key=code_key,
+            height=145,
+            placeholder="코드를 입력하세요."
+        )
 
-    with run_col:
+    with button_col:
+        st.html("<br>")
+        reset_clicked = st.button(
+            "처음부터",
+            use_container_width=True,
+        )
         run_clicked = st.button(
             "▶ 코드 실행",
             type="primary",
             use_container_width=True,
         )
 
-    with reset_col:
-        reset_clicked = st.button(
-            "처음부터",
-            use_container_width=True,
-        )
-
     if reset_clicked:
         st.session_state.queue = INITIAL_QUEUE.copy()
-        st.session_state.previous_queue = INITIAL_QUEUE.copy()
         st.session_state.step = 0
         st.session_state.message = ""
         st.session_state.message_type = "info"
@@ -658,18 +585,9 @@ if st.session_state.step < len(QUESTIONS):
                 st.session_state.pending_queue = None
                 st.session_state.ready_for_next = False
                 st.session_state.message = (
-                    "코드는 정상적으로 실행되었지만 발표 순서가 조건과 다릅니다."
+                    "발표 순서가 틀렸습니다."
                 )
                 st.session_state.message_type = "error"
-
-    st.html(
-        f"""
-        <div class="console-box">
-            <div class="console-title">🖥️ 실행 결과</div>
-            {html.escape(st.session_state.console_output)}
-        </div>
-        """
-    )
 
     if st.session_state.message:
         if st.session_state.message_type == "success":
@@ -685,7 +603,6 @@ if st.session_state.step < len(QUESTIONS):
             type="primary",
             use_container_width=True,
         ):
-            st.session_state.previous_queue = st.session_state.queue.copy()
             st.session_state.queue = st.session_state.pending_queue.copy()
             st.session_state.pending_queue = None
             st.session_state.ready_for_next = False
@@ -697,6 +614,15 @@ if st.session_state.step < len(QUESTIONS):
             )
             st.session_state.code_version += 1
             st.rerun()
+
+    st.html(
+        f"""
+🖥️ 코드 실행 결과
+<div class="console-box">
+    {html.escape(st.session_state.console_output)}
+</div>
+        """
+    )
 
     st.html(
         f"""
@@ -726,11 +652,10 @@ if st.session_state.step < len(QUESTIONS):
 else:
     st.balloons()
     st.success("6개의 문제를 모두 해결했습니다! 오늘의 발표 순서가 완성되었습니다. 🎉")
-    st.code(f"queue = {st.session_state.queue}", language="python")
+    # st.code(f"queue = {st.session_state.queue}", language="python")
 
     if st.button("🔄 다시 도전하기", type="primary"):
         st.session_state.queue = INITIAL_QUEUE.copy()
-        st.session_state.previous_queue = INITIAL_QUEUE.copy()
         st.session_state.step = 0
         st.session_state.message = ""
         st.session_state.message_type = "info"
@@ -739,3 +664,26 @@ else:
         st.session_state.pending_queue = None
         st.session_state.code_version += 1
         st.rerun()
+
+
+
+# 정답
+# 1.
+# queue.sort()
+
+# 2.
+# queue.append('Isaac')
+# queue.append('Chris')
+
+# 3.
+# queue.insert(queue.index('Daniel') + 1, 'Noah')
+
+# 4.
+# queue.remove('Jully')
+
+# 5.
+# queue.insert(queue.index('Bella'), queue.pop(-1))
+
+# 6.
+# new_list = sorted(queue, reverse=True)
+# queue.insert(0, queue.pop(queue.index(new_list[2])))
