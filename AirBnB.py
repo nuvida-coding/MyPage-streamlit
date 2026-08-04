@@ -3,7 +3,7 @@ import streamlit as st
 
 CSV_PATH = './airbnb.csv'
 
-
+# https://mypage-airbnb.streamlit.app/
 # ==================================================
 # 1. 초기 데이터 만들기
 # ==================================================
@@ -193,7 +193,7 @@ with tab1:
         st.warning(f'위치 정보가 없는 숙소 {missing_count}개는 지도에서 제외되었습니다.')
 
     if len(map_df) > 0:
-        st.map(map_df, latitude='lat', longitude='lon')
+        st.map(map_df, latitude='lat', longitude='lon', size=2)
     else:
         st.info('지도에 표시할 수 있는 숙소가 없습니다.')    
 

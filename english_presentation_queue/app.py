@@ -49,7 +49,7 @@ Mike, Jully, Ann, Bella, Daniel, Ethan이 발표 신청을 했습니다.
         "title": "3. Daniel 바로 뒤에 Noah 추가하기",
         "text": """
 Noah는 Daniel 바로 다음 순서에 발표하고 싶어 합니다.  
-Daniel의 위치를 찾아 <b>바로 뒤에 Noah를 추가</b>하세요.
+<b>Daniel의 위치를 찾아 바로 뒤에 Noah를 추가</b>하세요.
 """,
         "target": [
             "Ann", "Bella", "Daniel", "Noah", "Ethan",
