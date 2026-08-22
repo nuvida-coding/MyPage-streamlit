@@ -13,11 +13,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-ASSET_DIR = Path("assets")
-IMG_DIR = ASSET_DIR / "IMG"
-IMG_EMO_DIR = IMG_DIR / "EMO"
-SOUND_DIR = ASSET_DIR / "SOUND"
-VIDEO_DIR = ASSET_DIR / "VIDEO"
+BASE_DIR = Path(__file__).resolve().parent
+
+ASSET_DIR = BASE_DIR / "assets"
+IMG_DIR = ASSET_DIR / "img"
+IMG_EMO_DIR = IMG_DIR / "emo"
+SOUND_DIR = ASSET_DIR / "sound"
+VIDEO_DIR = ASSET_DIR / "video"
 
 GIA_LOGO = IMG_DIR / "gia_logo.png"
 INTRO_IMAGE = IMG_DIR / "1-1_intro.png"
