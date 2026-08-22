@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 
+# https://stockmanger.streamlit.app/
+
 # --------------------------------------------------
 # 유틸 함수
 # --------------------------------------------------
