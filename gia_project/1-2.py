@@ -1,6 +1,7 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from pathlib import Path
-import base64, csv
+import base64, csv, json
 
 # =========================================================
 # 기본 설정
@@ -24,11 +25,13 @@ GIA_LOGO = IMG_DIR / "gia_logo.png"
 INTRO_IMAGE = IMG_DIR / "1-2_intro.png"
 MISSION1_IMAGE = IMG_DIR / "1-2_m1.png"
 MISSION2_IMAGE = IMG_DIR / "1-2_m2.png"
+MISSION3_IMAGE = IMG_DIR / "1-2_m3.png"
 AGENT_FILE = Path("agents.csv")
 
 MISSIONS = {
     "Mission 1": "mission1_story",
     "Mission 2": "mission2_story",
+    "Mission 3": "mission3_story",
 }
 
 # =========================================================
@@ -38,52 +41,49 @@ MISSIONS = {
 PAGE_MEDIA = {
     "registered": {
         "video": None,
-        "bgm": SOUND_DIR / "Engineering_2.mp3",
+        "bgm": None,
         "bgm_loop": True,
     },
-
-    # "prologue": {
-    #     "video": VIDEO_DIR / "sin2.mp4",
-    #     "bgm": SOUND_DIR / "Engineering_2.mp3",
-    #     "bgm_loop": True,
-    # },
-
-    "chapter_intro": {
+    "intro": {
         "video": None,
         "bgm": SOUND_DIR / "futuristicbutton_a_2.mp3",
         "bgm_loop": False,
     },
-
     "mission1_story": {
-        "video": VIDEO_DIR / "sin1_change.mp4",
+        "video": VIDEO_DIR / "ch01-1-1.mp4",
         "bgm": SOUND_DIR / "upbeatcorporation_2.mp3",
         "bgm_loop": True,
     },
-
     "mission1": {
         "video": None,
-        "bgm": SOUND_DIR / "futuristicbutton_a_2.mp3",
+        "bgm": SOUND_DIR / "sweepnext_2.mp3",
         "bgm_loop": False,
     },
-
     "mission2_story": {
-        "video": VIDEO_DIR / "sin1_idle.mp4",
+        "video": VIDEO_DIR / "ch01-1-2.mp4",
         "bgm": SOUND_DIR / "brainTeaser_2.mp3",
         "bgm_loop": True,
     },
-
     "mission2": {
         "video": None,
         "bgm": SOUND_DIR / "sweepnext_2.mp3",
         "bgm_loop": False,
     },
-
+    "mission3_story": {
+        "video": VIDEO_DIR / "sin1_idle.mp4",
+        "bgm": SOUND_DIR / "brainTeaser_2.mp3",
+        "bgm_loop": True,
+    },
+    "mission3": {
+        "video": None,
+        "bgm": SOUND_DIR / "sweepnext_2.mp3",
+        "bgm_loop": False,
+    },
     "epilogue": {
         "video": VIDEO_DIR / "sin2.mp4",
         "bgm": SOUND_DIR / "upbeatcorporation_2.mp3",
         "bgm_loop": True,
     },
-
     "ending": {
         "video": None,
         "bgm": SOUND_DIR / "ending.mp3",
@@ -92,8 +92,8 @@ PAGE_MEDIA = {
 }
 
 # 매핑에 없는 페이지에서 사용할 기본값
-DEFAULT_VIDEO_PATH = VIDEO_DIR / "sin1_change.mp4"
-DEFAULT_BGM_PATH = SOUND_DIR / "Engineering_2.mp3"
+DEFAULT_VIDEO_PATH = VIDEO_DIR / "sin2.mp4"
+DEFAULT_BGM_PATH = SOUND_DIR / "engineering_2.mp3"
 
 # =========================================================
 # 캐릭터 감정별 이미지
@@ -125,7 +125,11 @@ CHARACTER_IMAGES = {
         "sinister": IMG_EMO_DIR / "alex_sinister.png",
         "smirk": IMG_EMO_DIR / "alex_smirk.png",
         "talking": IMG_EMO_DIR / "alex_talking.png",
-        "whatever": IMG_EMO_DIR / "alex_whatever.png"
+        "talking2": IMG_EMO_DIR / "alex_talking2.png",
+        "talking3": IMG_EMO_DIR / "alex_talking3.png",
+        "whatever": IMG_EMO_DIR / "alex_whatever.png",
+        "difficult": IMG_EMO_DIR / "alex_difficult.png",
+        "gaze": IMG_EMO_DIR / "alex_gaze.png"
     },
     "Mason": {
         "idle": IMG_EMO_DIR / "mason_idle.png",
@@ -152,7 +156,11 @@ CHARACTER_IMAGES = {
         "sinister": IMG_EMO_DIR / "mason_sinister.png",
         "smirk": IMG_EMO_DIR / "mason_smirk.png",
         "talking": IMG_EMO_DIR / "mason_talking.png",
-        "whatever": IMG_EMO_DIR / "mason_whatever.png"
+        "talking2": IMG_EMO_DIR / "mason_talking2.png",
+        "talking3": IMG_EMO_DIR / "mason_talking3.png",
+        "whatever": IMG_EMO_DIR / "mason_whatever.png",
+        "difficult": IMG_EMO_DIR / "mason_difficult.png",
+        "talking4": IMG_EMO_DIR / "mason_talking4.png"
     },
 }
 
@@ -162,7 +170,6 @@ SPEAKER_COLORS = {
     "Mason": "#5CC8FF",
     "SYSTEM": "#FF6464",
 }
-
 SPEAKER_ALIGNMENTS = {
     "Alex": "left",
     "Mason": "right",
@@ -179,28 +186,23 @@ st.html("""
     [data-testid="stHeader"] {
         background: transparent;
     }
-
     [data-testid="stSidebar"] {
         display: none;
     }
-
     #MainMenu, footer {
         visibility: hidden;
     }
-
     .stApp {
         background:
             radial-gradient(circle at 50% 10%, rgba(11, 45, 55, 0.35), transparent 40%),
             #020607;
         color: #d8f5ee;
     }
-
     .block-container {
         max-width: 1100px;
         padding-top: 2.2rem;
         padding-bottom: 3rem;
     }
-
     /* 공통 GIA 패널 */
     .gia-panel {
         border: 1px solid rgba(85, 255, 208, 0.35);
@@ -212,32 +214,69 @@ st.html("""
         border-radius: 4px;
         font-family: Consolas, "Courier New", monospace;
     }
-
     .terminal-title {
         color: #62ffd3;
         letter-spacing: 0.15em;
         font-size: 13px;
         margin-bottom: 18px;
     }
-
     .terminal-main {
         color: #eafff8;
         font-family: Consolas, "Courier New", monospace;
         line-height: 1.9;
     }
-
     .terminal-dim {
         color: #7da49a;
     }
-
+    .episode-title {
+        font-size: 17px;
+        color: #82a69d;
+        letter-spacing: .2em;
+        font-weight: 700;
+    }
+    .intro-image {
+        width: 100%;
+        max-width: 900px;
+        max-height: 500px;
+        object-fit: contain;
+        display: block;
+        margin: 25px auto;
+    }
+    /* -----------------------------------------
+    Mission Brief
+    ----------------------------------------- */
+    .intro-briefing {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(98,255,211,.13);
+    }
+    .briefing-label {
+        color: #62ffd3;
+        font-size: 11px;
+        letter-spacing: .18em;
+        padding-top: 3px;
+    }
+    .briefing-text {
+        color: #91afa7;
+        font-family:
+            Pretendard,
+            "Noto Sans KR",
+            sans-serif;
+        font-size: 15px;
+        line-height: 1.8;
+        text-align: left;
+    }
+    .briefing-text b {
+        color: #dffff7;
+    }
     .warning {
         color: #ff6666;
     }
-
     .success {
         color: #68ffbd;
     }
-
     .mission-title {
         font-family: Consolas, "Courier New", monospace;
         letter-spacing: .18em;
@@ -246,7 +285,6 @@ st.html("""
         font-size: 16px;
         margin-bottom: 8px;
     }
-
     .mission-name {
         font-size: 32px;
         text-align: center;
@@ -254,34 +292,29 @@ st.html("""
         color: white;
         margin-bottom: 26px;
     }
-
     .data-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 12px;
         margin: 24px 0;
     }
-
     .data-card {
         border: 1px solid rgba(98,255,211,.22);
         padding: 18px;
         background: rgba(0,0,0,.25);
         text-align: center;
     }
-
     .data-label {
         color: #78958e;
         font-size: 11px;
         letter-spacing: .08em;
     }
-
     .data-value {
         color: #eafff8;
         font-size: 22px;
         margin-top: 8px;
         font-weight: 700;
     }
-
     /* 입력창 */
     div[data-testid="stTextInput"] input,
     div[data-testid="stNumberInput"] input {
@@ -291,14 +324,12 @@ st.html("""
         border-radius: 2px;
         font-family: Consolas, "Courier New", monospace;
     }
-
     div[data-testid="stTextInput"] label,
     div[data-testid="stNumberInput"] label {
         color: #95b7ae;
         font-family: Consolas, "Courier New", monospace;
         letter-spacing: .08em;
     }
-
     /* 일반 버튼 */
     div[data-testid="stButton"] button,
     div[data-testid="stFormSubmitButton"] button {
@@ -310,36 +341,29 @@ st.html("""
         letter-spacing: .05em;
         transition: .15s ease;
     }
-
     div[data-testid="stButton"] button:hover,
     div[data-testid="stFormSubmitButton"] button:hover {
         border-color: #62ffd3;
         color: #62ffd3;
         box-shadow: 0 0 18px rgba(98,255,211,.12);
     }
-
     /* 오디오 컨트롤 숨기기 */
     audio {
         display: none !important;
     }
-
     /* 비디오 컨트롤/진행바 숨기기 */
     div[data-testid="stVideo"] video {
         pointer-events: none !important;
     }
-
     div[data-testid="stVideo"] video::-webkit-media-controls {
         display: none !important;
     }
-
     div[data-testid="stVideo"] video::-webkit-media-controls-enclosure {
         display: none !important;
     }
-
     div[data-testid="stVideo"] video::-webkit-media-controls-panel {
         display: none !important;
     }
-
     .mason-name {
         color: #5CC8FF;
     }
@@ -349,13 +373,11 @@ st.html("""
     .system-name {
         color: #FF6464;
     }
-
     .mission-image-wrap {
         display: grid;
         grid-template-columns: 1fr;
         margin: 24px 0;
     }
-
     .mission-image {
         width: 100%;
         max-height: 420px;
@@ -363,7 +385,6 @@ st.html("""
         display: block;
         margin: 0 auto;
     }
-
     .mission-info-card {
         border: 1px solid rgba(98,255,211,.22);
         padding: 18px;
@@ -372,7 +393,6 @@ st.html("""
         margin: 24px 0;
         text-align: center;
     }
-
     .mission-alert {
         border: 1px solid rgba(255,100,100,.35);
         color: #ff8a8a;
@@ -380,6 +400,14 @@ st.html("""
         font-family: Consolas, "Courier New", monospace;
         margin: 20px 0;
         text-align: center;
+    }
+    .chapter-label {
+        font-family: Consolas, "Courier New", monospace;
+        color: #62ffd3;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: .18em;
+        padding-top: 32px;
     }
 </style>
 """)
@@ -406,52 +434,34 @@ for key, value in defaults.items():
 # =========================================================
 # 스토리 데이터
 # 형식: ("등장인물", "감정", "대사")
-# SYSTEM은 감정값을 None으로 둡니다.
+# SYSTEM은 감정값을 None
 # =========================================================
-# PROLOGUE_DIALOGUES = [
-#     ("Alex", "happy", "접속 확인. {agent} 요원, 맞지?"),
-#     ("Alex", "happy", "국제 정보 기관 Global Intelligence Agency에 온 걸 환영해!"),
-#     ("Alex", "smile", "오늘부터 함께 움직이게 될 GIA 특수 정보 요원 Alex야."),
-#     ("Mason", "idle", "그리고 난 Mason. 사이버 분석 담당이야."),
-#     ("Mason", "smile2", "네 기록은 봤어. 코딩 실력이 꽤 좋다던데?"),
-#     ("Alex", "dumbfounded", "Mason, 첫날부터 너무 부담 주지 마."),
-#     ("Mason", "dumbfounded", "어차피 몇 분 뒤면 실전 들어갈 텐데 뭘."),
-#     ("Alex", "idle", "{agent}. 원래라면 브리핑부터 천천히 진행해야 하는데, 상황이 바뀌었어."),
-#     ("Mason", "idle", "가입 첫날부터 실전이다. 운이 좋은 건지 나쁜 건지는 모르겠지만..!"),
-# ]
-
-CHAPTER1_DIALOGUES = [
-    ("SYSTEM", None, "PRIORITY ALERT\nCLASSIFIED INTELLIGENCE RECEIVED"),
-    ("Alex", "idle", "조금 전 네덜란드에서 긴급 첩보가 들어왔어."),
-    ("Alex", "dumbfounded", "우리가 추적하던 비밀 조직 <i><b>빌더버그</b></i>가 움직이기 시작했대."),
-    ("Mason", "serious", "그들의 공격 타겟은 평화의 도시 <i><b>헤이그</b></i>. 정확히 무슨 일을 꾸미고 있는지는 아직 몰라."),
-    ("Alex", "idle", "다만 한 가지는 확인했어. 빌더버그가 작전 통신에 사용하는 인공위성을 찾아냈어."),
-    ("Mason", "serious", "위성 이름은... <i><b>INTELSAT</b></i>이야."),
-    ("Alex", "happy", "빌더버그를 잡을 수 있는 정보가 인공위성 안에 있을지 몰라!"),
-    ("Mason", "dumbfounded", "지금 바로 Intelsat 시스템에 침투할 준비를 시작하자."),
-    ("SYSTEM", None, "⚠️WARNING⚠️\nINTELSAT ORBIT DEVIATION DETECTED"),
-    ("Alex", "dumbfounded", "!!!"),
-    ("Alex", "dumbfounded", "무슨일이야!?"),
-    ("Mason", "flustered", "잠깐…… 상황이 안 좋은데.\nIntelsat 위성이 정지궤도를 벗어나고 있어!"),
-    ("Alex", "dumbfounded", "해킹에 문제라도 생겼다는 말이야?"),
-    ("Mason", "worried", "아니. 위성 자체의 문제야. 연료가 거의 소진된 것 같아."),
-    ("Mason", "worried", "이대로 가면 위성이 곧 묘지궤도로 이동하게 될 거야."),
-    ("Alex", "dumbfounded", "묘지궤도?"),
-    ("Mason", "flustered", "수명이 끝난 위성을 보내는 궤도야.\n거기까지 올라가 버리면 Intelsat에 접근할 기회도 없어진다고 보면 돼."),
-    ("Alex", "worried", "흠.. 그럼 시간이 얼마나 남은 거지?"),
-    ("Mason", "dumbfounded", "그걸 지금부터 알아내야해."),
+M1_DIALOGUES = [
+    ("Alex", "flustered", "우리에게 남은 시간은 30분 남짓이야. 시간이 너무 촉박하겠는걸."),
+    ("Mason", "deep", "침착해. 손상 데이터를 분석해 보고 있어."),
+    ("Alex", "dumbfounded", "무슨 정보가 담긴 것 같아?"),
+    ("Mason", "talking3", "파일이 3개로 분리되어있어서 정상적으로 읽을 수가 없어."),
+    ("Alex", "flustered", "이게뭐야! 의미 없는 문자들이잖아. 아무래도 데이터가 제대로 손상되었나봐."),
+    ("Mason", "talking3", "우선 분리된 데이터들을 연결시켜야해."),
+    ("Mason", "firmly", "NIS가 수집한 정보에 따르면 정상적인 데이터의 길이는 512자라고 해."),
+    ("Alex", "firmly", "그럼 손상된 파일 3개를 조합해서 길이가 512자인 데이터를 추출해내자!")
 ]
 
-AFTER_M1_DIALOGUES = [
-    ("SYSTEM", None, "ANALYSIS COMPLETE\nTIME REMAINING : 35 MINUTES"),
-    ("Alex", "flustered", "35분이라니! 생각보다 시간이 얼마 안남았는데..."),
-    ("Mason", "worried", "서둘러 접속해서 필요한 정보를 빼내야 해."),
-    ("Alex", "solemn", "그럼 바로 시작하자!"),
-    ("Mason", "worried", "그게…… 문제가 하나 더 있어."),
-    ("Alex", "surprised", "뭐야?"),
-    ("Mason", "dumbfounded", "Intelsat에 접속하는 비밀번호를 알아내야해."),
-    ("Alex", "dumbfounded", "첩보로 받은 내용에 따르면 <i><b>위성의 궤도 둘레</i></b>와 관련이 있대!"),
-    ("Mason", "dumbfounded", "현재 궤도는 35,786km 이고, 지구 반지름은 6,371km 이니까...\n{agent}! 서둘러 계산해서 비밀번호를 찾아줘!"),
+M2_DIALOGUES = [
+    ("Alex", "happy", "좋았어, {agent} 요원! 이제 여기에 빌더버그가 헤이그 도시를 파괴할 날짜 정보가 담겨있다는거지?"),
+    ("Alex", "dumbfounded", "그런데 이렇게 읽을 수도 없는 데이터를 가지고 뭘 알 수 있는거야?"),
+    ("Mason", "talking3", "GIA 말에 따르면 360번부터 429번까지가 날짜와 관련된 중요한 단서 같대."),
+    ("Alex", "dumbfounded", "그게 다야?"),
+    ("Mason", "deep", "응… 아직은. 일단 필요한 부분만 잘라낸 다음 해독해야할 것 같아!"),
+    ("Alex", "determinded", "{agent} 요원, 이번에도 부탁해!"),
+]
+
+M3_DIALOGUES = [
+    ("Alex", "gaze", "흠... 그런데 Mason,"),
+    ("Alex", "difficult", "추출한 데이터를 아무리봐도 날짜 정보는 전혀 모르겠는걸?"),
+    ("Mason", "deep", "나도 지금 다양한 방법으로 분석해보는 중이야."),
+    ("Alex", "happy", "이것봐, Mason! GIA 본부에서 <b>문자열 분석 도구</b> 파일을 보내왔어!"),
+    ("Mason", "talking4", "잘됐다! 그럼 {agent} 요원은 이 도구들을 활용해서 날짜 정보를 알아내줘!"),
 ]
 
 EPILOGUE_DIALOGUES = [
@@ -609,6 +619,84 @@ def image_to_base64(path):
 
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
+
+
+# 클릭하면 미션 데이터를 클립보드에 복사합니다.
+def show_copy_data_button(data, key):
+    safe_data = json.dumps(data)
+
+    components.html(f"""
+        <style>
+        .copy-button {{
+                width: 100%;
+                height: 46px;
+        
+                background: rgba(5,23,24,.92);
+        
+                border:
+                    1px solid rgba(98,255,211,.40);
+        
+                color: #a9cfc5;
+        
+                font-family:
+                    Consolas,
+                    "Courier New",
+                    monospace;
+        
+                font-size: 13px;
+                letter-spacing: .08em;
+        
+                cursor: pointer;
+        
+                transition: .15s ease;
+            }}
+        
+            .copy-button:hover {{
+                border-color: #62ffd3;
+                color: #62ffd3;
+            }}
+        
+            .copy-button.copied {{
+                border-color: #68ffbd;
+                color: #68ffbd;
+            }}
+        </style>
+        <button id="copy-{key}" class="copy-button" type="button">
+            💾 COPY MISSION DATA
+        </button>
+
+        <script>
+            const button = document.getElementById("copy-{key}");
+            const data = {safe_data};
+
+            button.addEventListener("click", async () => {{
+                try {{
+                    await navigator.clipboard.writeText(data);
+                }} catch (error) {{
+                    const textarea = document.createElement("textarea");
+                    textarea.value = data;
+                    textarea.style.position = "fixed";
+                    textarea.style.opacity = "0";
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand("copy");
+                    textarea.remove();
+                }}
+
+                button.textContent = "✓ DATA COPIED TO CLIPBOARD";
+                button.classList.add("copied");
+                setTimeout(() => {{
+                    button.textContent =
+                        "💾 COPY MISSION DATA";
+
+                    button.classList.remove("copied");
+                }}, 2000);
+            }});
+        </script>
+        """,
+        height=55,
+    )
 
 def show_dialogue(dialogues, next_page):
     idx = st.session_state.dialogue_index
@@ -973,38 +1061,33 @@ def registered_page():
     """)
 
     if st.button("ENTER SECURE NETWORK", use_container_width=True):
-        go("chapter_intro")
+        go("intro")
 
 
 # =========================================================
 # 3. Intro 화면
 # =========================================================
-def chapter_intro():
+def intro():
     intro_img = image_to_base64(INTRO_IMAGE)
 
     st.html(f"""
-        <div class="gia-panel" style="margin-top:90px;text-align:center;">
-        <div class="terminal-title">CLASSIFIED OPERATION</div>
-        <div style="font-size:17px;color:#82a69d;letter-spacing:.2em;">CHAPTER 1 — THE CORRUPTED FILE</div>
-        <div style="font-size:46px;font-weight:800;margin:16px 0;color:white;">
-            손상된 파일
+    <div class="gia-panel" style="margin-top:90px;text-align:center;">
+        <div class="terminal-title">
+            CLASSIFIED OPERATION
         </div>
-        <img
-            src="data:image/png;base64,{intro_img}"
-            style="
-                width: 100%;
-                max-width: 650px;
-                max-height: 350px;
-                object-fit: contain;
-                display: block;
-                margin: 25px auto;
-            "
-        >
-        <div class="terminal-dim">
-            지난 이야기:<br>
-            GIA 요원들은 빌더버그 조직의 인공위성 비밀번호를 알아내 해킹에 성공한다.<br>
-            하지만 그 안에서 발견한 파일은 손상되어 있는데…<br>
-            위성이 묘지궤도에 도착하기 전까지 정보를 입수할 수 있을까!<br>
+
+        <img class="intro-image" src="data:image/png;base64,{intro_img}">
+
+        <div class="intro-briefing">
+            <div class="briefing-label">
+                지난 이야기
+            </div>
+
+            <div class="briefing-text">
+                GIA 요원들은 빌더버그 조직의 인공위성 비밀번호를 알아내 해킹에 성공한다.<br>
+                하지만 그 안에서 발견한 파일은 손상되어 있는데…<br>
+                위성이 묘지궤도에 도착하기 전까지 정보를 입수할 수 있을까!<br>
+            </div>
         </div>
     </div>
     """)
@@ -1019,56 +1102,96 @@ def chapter_intro():
 MISSION_CONFIG = {
     "mission1": {
         "number": "01",
-        "title": "남은 시간을 계산하라",
+        "title": "정상 데이터 찾기",
         "image": MISSION1_IMAGE,
+        "alert_html": '',
         "prompt_html": """
-            <b class="mason-name">Mason</b><br>
-            현재 위치에서 묘지궤도까지 최소 직선거리부터 구해야해.<br>
-            아래 공식을 활용해서 남은 시간을 구해줘!<br><br>
-        """,
-        "card_label": "FORMULA",
-        "card_value": "시간(s) = 거리(km) / 속도(km/s)",
-        "input_label": "TIME REMAINING / MIN",
-        "submit_label": "SUBMIT ANALYSIS",
-        "answer": 35,
-        "wrong_message": "ANALYSIS FAILED — 계산 결과를 다시 확인하십시오.",
-        "success_message": "ANALYSIS COMPLETE",
-        "continue_label": "CONTINUE OPERATION",
+                        <b class="alex-name">Alex</b><br>
+                        정상 데이터의 길이는 정확히 512자야.<br>
+                        손상된 파일 3개의 길이를 확인하고,<br>
+                        두 파일을 조합해서 길이가 512자가 되는 데이터를 찾아줘!<br><br>
+                    """,
+        "clipboard_data": """
+                        file1 = "ajkek__ihhfyfy7867gjk_,hi_bjfuky_gfu,hjkshfkyf_jgeu______,leieowry#ekh_iehkfejewjgdfe_48635ihf64___,guulhf_h,gdtj#gg#g65_ffy74764645v84djhf#uh8y__,h_jmehie##hejukjvd__,648fd7sgk4dl#k3_jhr82tej#223_______,___"
+                        file2 = "djhfaheu___wehiehrhlsfhouhewwehr1238364892hrehwfwhelhewlehrlewhiorhhf3824863___883@hre93734084fdfhieelwhfhiei#startmyg^efac^pohSkcans^tekram^ytisrevinu^erotStnemtraped^llaHytic^krap^tnaruatser^retaehTeivomend#hfdhsifohifeifhlk368537djs89hds83e____89fwgafg3dbsjhgdiutwfw823___t93g3%@iu3977e&egd37dheehdgsaioiowi"
+                        file3 = "asdfgwheu2963__jewjeyjkejeygey7627#36825h___,__d#ufigwfk,dfuigeuwke__,s324dfekd7he68___,jehkfk,fk73r#hkg743gjgu_,68fthk__#hfyu744ch_,ds##e_________####u#__,#j_#ab__,#nbu#_b_a_bb_b#bbbbrbby__##bb__bb##3#bb#1b_bb__,,bbbb#th_,64hdd##jdueh#hd72_,jey8___,37dek7dejebwjwkey1n_,ju,,_jeuwweejgeekeur_jege8363jfbdk"
+                        """,
+        "card_label": "",
+        "card_value": "",
+        "input_label": "NORMAL DATA",
+        "submit_label": "VERIFY DATA",
+        "answer": 'ajkek__ihhfyfy7867gjk_,hi_bjfuky_gfu,hjkshfkyf_jgeu______,leieowry#ekh_iehkfejewjgdfe_48635ihf64___,guulhf_h,gdtj#gg#g65_ffy74764645v84djhf#uh8y__,h_jmehie##hejukjvd__,648fd7sgk4dl#k3_jhr82tej#223_______,___asdfgwheu2963__jewjeyjkejeygey7627#36825h___,__d#ufigwfk,dfuigeuwke__,s324dfekd7he68___,jehkfk,fk73r#hkg743gjgu_,68fthk__#hfyu744ch_,ds##e_________####u#__,#j_#ab__,#nbu#_b_a_bb_b#bbbbrbby__##bb__bb##3#bb#1b_bb__,,bbbb#th_,64hdd##jdueh#hd72_,jey8___,37dek7dejebwjwkey1n_,ju,,_jeuwweejgeekeur_jege8363jfbdk',
+        "answer_placeholder": '정상 데이터 문자열을 입력하세요.',
+        "wrong_message": "DATA MISMATCH — 파일의 조합을 다시 확인하십시오.",
+        "success_message": "NORMAL DATA RECOVERED",
+        "continue_label": "NEXT OPERATION",
         "next_page": "mission2_story",
     },
     "mission2": {
         "number": "02",
-        "title": "INTELSAT 접속 암호를 찾아라",
+        "title": "필요한 부분 추출하기",
         "image": MISSION2_IMAGE,
-        "alert_html": """
-            <div class="mission-alert">
-                ACCESS DENIED<br>
-                PASSWORD REQUIRED
-            </div>
-        """,
+        "alert_html": '',
         "prompt_html": """
-            <b class="mason-name">Mason</b><br>
-            위성의 고도는 지표면부터 잰 거리야.<br>
-            원의 둘레 공식을 사용해서 위성 궤도의 둘레를 구하자!<br><br>
-        """,
-        "card_label": "ENCRYPTED MESSAGE",
-        "card_value": "원의 둘레 = 원의 반지름 ⨯ 2 ⨯ 원주율",
-        "input_label": "PASSWORD",
-        "submit_label": "CONNECT",
-        "answer": 2647,
-        "wrong_message": "ACCESS DENIED — 접속 암호가 일치하지 않습니다.",
-        "success_message": "ACCESS CODE ACCEPTED — AUTHENTICATING...",
-        "continue_label": "ENTER INTELSAT SYSTEM",
-        "next_page": "epilogue",
+                    <b class="mason-name">Mason</b><br>
+                    날짜와 관련된 단서는 360번째부터 429번째 문자에 있어.<br>
+                    문자열 슬라이싱을 사용해서 필요한 부분만 정확하게 추출해줘!<br><br>
+                    """,
+        "card_label": "문자열 슬라이싱",
+        "card_value": "문자열[시작:끝:간격]",
+        "input_label": "EXTRACTED DATA",
+        "submit_label": "VERIFY DATA",
+        "answer": '__,#j_#ab__,#nbu#_b_a_bb_b#bbbbrbby__##bb__bb##3#bb#1b_bb__,,bbbb#th_,',
+        "answer_placeholder": '',
+        "wrong_message": "EXTRACTION FAILED — 추출한 데이터 범위를 다시 확인하세요.",
+        "success_message": "DATA VERIFIED — 필요한 데이터 추출에 성공했습니다.",
+        "continue_label": "NEXT OPERATION",
+        "next_page": "mission3_story",
     },
+    "mission3": {
+        "number": "03",
+        "title": "데이터 속 날짜 힌트 알아내기",
+        "image": MISSION3_IMAGE,
+        "alert_html": '',
+        "prompt_html": """
+                        <b class="mason-name">Mason</b><br>
+                        잘라낸 데이터만으로는 날짜 정보를 알아보기 어려워.<br>
+                        문자열 분석 도구를 사용해서 숨겨진 날짜 힌트를 찾아내줘!<br><br>
+                    """,
+        "card_label": "문자열 API",
+        "card_value":  """
+                            upper() : 모든 문자를 대문자로 변경<br>
+                            lower() : 모든 문자를 소문자로 변경<br>
+                            strip() : 문자열 양쪽 공백 제거<br>
+                            replace() : 특정 문자열을 다른 문자열로 변경
+                        """,
+        "input_label": "DATE CLUE",
+        "submit_label": "SUBMIT ANALYSIS",
+        "answer": 'january31th',
+        "answer_placeholder": '찾아낸 날짜 문자열을 그대로 입력하세요.',
+        "wrong_message": "ANALYSIS FAILED — 문자열 분석 방법을 다시 확인하십시오.",
+        "success_message": "DATE CLUE DETECTED — ANALYSIS COMPLETE",
+        "continue_label": "EPILOGUE",
+        "next_page": "epilogue",
+    }
 }
 
 
+# 공통 미션 UI와 정답 판정을 처리합니다.
 def render_mission_page(mission_key):
-    """공통 미션 UI와 정답 판정을 처리합니다."""
     config = MISSION_CONFIG[mission_key]
     image_data = image_to_base64(config["image"])
     alert_html = config.get("alert_html", "")
+    card_html = ''
+    answer = None
+
+    if config.get("card_value"):
+        card_html = f"""
+        <div class="mission-info-card">
+            <div class="data-label">{config["card_label"]}</div>
+            <div class="data-value">{config["card_value"]}</div>
+        </div>
+        """
 
     st.html(f"""
     <div class="gia-panel">
@@ -1078,37 +1201,38 @@ def render_mission_page(mission_key):
         {alert_html}
 
         <div class="mission-image-wrap">
-            <img
-                src="data:image/png;base64,{image_data}"
-                class="mission-image"
-            >
+            <img src="data:image/png;base64,{image_data}" class="mission-image">
         </div>
 
         <div class="terminal-main">
             {config["prompt_html"]}
         </div>
 
-        <div class="mission-info-card">
-            <div class="data-label">{config["card_label"]}</div>
-            <div class="data-value">{config["card_value"]}</div>
-        </div>
+        {card_html}
     </div>
     """)
 
-    answer = st.number_input(
-        config["input_label"],
-        min_value=0,
-        step=1,
-        value=None,
-        placeholder="정수 입력",
-        key=f"{mission_key}_answer",
-    )
+    clipboard_data = config.get("clipboard_data")
+    if clipboard_data:
+        show_copy_data_button(clipboard_data.strip(), mission_key)
 
-    if st.button(
-        config["submit_label"],
-        use_container_width=True,
-        key=f"{mission_key}_submit",
-    ):
+    if config["answer"].isdigit():
+        answer = st.number_input(
+            config["input_label"],
+            min_value=0,
+            step=1,
+            value=None,
+            placeholder="정수 입력",
+            key=f"{mission_key}_answer"
+        )
+    else:
+        answer = st.text_input(
+            config["input_label"], 
+            placeholder=config['answer_placeholder'], 
+            value=None, key=f"{mission_key}_answer"
+        )
+
+    if st.button(config["submit_label"], use_container_width=True, key=f"{mission_key}_submit"):
         is_correct = answer == config["answer"]
         st.session_state[f"{mission_key}_clear"] = is_correct
         st.session_state.message = "success" if is_correct else "wrong"
@@ -1130,9 +1254,10 @@ def render_mission_page(mission_key):
 
 def mission1():
     render_mission_page("mission1")
-
 def mission2():
     render_mission_page("mission2")
+def mission3():
+    render_mission_page("mission3")
 
 
 # =========================================================
@@ -1170,19 +1295,28 @@ def render_current_page():
         play_bgm(page)
 
     if st.session_state.registered and page not in ("register", "registered"):
-        _, selector_col = st.columns([4, 1])
+        chapter_col, selector_col = st.columns([4, 1])
+        with chapter_col:
+            st.html("""
+            <div class="chapter-label">
+                CHAPTER 01 - 
+                <span style="color:rgba(255,100,100,.8);font-weight: 700;">EP.2</span>
+            </div>
+            """)
         with selector_col:
             show_mission_selector()
 
     page_routes = {
         "register": register_page,
         "registered": registered_page,
-        # "prologue": lambda: show_dialogue(PROLOGUE_DIALOGUES, "chapter_intro"),
-        "chapter_intro": chapter_intro,
-        "mission1_story": lambda: show_dialogue(CHAPTER1_DIALOGUES, "mission1"),
+        # "prologue": lambda: show_dialogue(PROLOGUE_DIALOGUES, "intro"),
+        "intro": intro,
+        "mission1_story": lambda: show_dialogue(M1_DIALOGUES, "mission1"),
         "mission1": mission1,
-        "mission2_story": lambda: show_dialogue(AFTER_M1_DIALOGUES, "mission2"),
+        "mission2_story": lambda: show_dialogue(M2_DIALOGUES, "mission2"),
         "mission2": mission2,
+        "mission3_story": lambda: show_dialogue(M3_DIALOGUES, "mission3"),
+        "mission3": mission3,
         "epilogue": lambda: show_dialogue(EPILOGUE_DIALOGUES, "ending"),
         "ending": ending,
     }

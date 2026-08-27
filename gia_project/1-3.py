@@ -1,7 +1,7 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from pathlib import Path
-import base64
-import csv
+import base64, csv, json
 
 # =========================================================
 # 기본 설정
@@ -15,21 +15,23 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-ASSET_DIR = BASE_DIR / "assets"
+ASSET_DIR = BASE_DIR / "assets" 
 IMG_DIR = ASSET_DIR / "img"
 IMG_EMO_DIR = IMG_DIR / "emo"
 SOUND_DIR = ASSET_DIR / "sound"
 VIDEO_DIR = ASSET_DIR / "video"
 
 GIA_LOGO = IMG_DIR / "gia_logo.png"
-INTRO_IMAGE = IMG_DIR / "1-1_intro.png"
-MISSION1_IMAGE = IMG_DIR / "1-1_m1.png"
-MISSION2_IMAGE = IMG_DIR / "1-1_m2.png"
+INTRO_IMAGE = IMG_DIR / "1-3_intro.png"
+MISSION1_IMAGE = IMG_DIR / "1-3_m2.png"
+MISSION2_IMAGE = IMG_DIR / "1-3_m2.png"
+MISSION3_IMAGE = IMG_DIR / "1-3_m3.png"
 AGENT_FILE = Path("agents.csv")
 
 MISSIONS = {
     "Mission 1": "mission1_story",
     "Mission 2": "mission2_story",
+    "Mission 3": "mission3_story",
 }
 
 # =========================================================
@@ -39,52 +41,49 @@ MISSIONS = {
 PAGE_MEDIA = {
     "registered": {
         "video": None,
-        "bgm": SOUND_DIR / "engineering_2.mp3",
+        "bgm": None,
         "bgm_loop": True,
     },
-
-    "prologue": {
-        "video": VIDEO_DIR / "sin2.mp4",
-        "bgm": SOUND_DIR / "engineering_2.mp3",
-        "bgm_loop": True,
-    },
-
     "intro": {
         "video": None,
         "bgm": SOUND_DIR / "futuristicbutton_a_2.mp3",
         "bgm_loop": False,
     },
-
     "mission1_story": {
         "video": VIDEO_DIR / "ch01-1-1.mp4",
         "bgm": SOUND_DIR / "upbeatcorporation_2.mp3",
         "bgm_loop": True,
     },
-
     "mission1": {
         "video": None,
         "bgm": SOUND_DIR / "sweepnext_2.mp3",
         "bgm_loop": False,
     },
-
     "mission2_story": {
         "video": VIDEO_DIR / "ch01-1-2.mp4",
         "bgm": SOUND_DIR / "brainTeaser_2.mp3",
         "bgm_loop": True,
     },
-
     "mission2": {
         "video": None,
         "bgm": SOUND_DIR / "sweepnext_2.mp3",
         "bgm_loop": False,
     },
-
+    "mission3_story": {
+        "video": VIDEO_DIR / "sin1_idle.mp4",
+        "bgm": SOUND_DIR / "brainTeaser_2.mp3",
+        "bgm_loop": True,
+    },
+    "mission3": {
+        "video": None,
+        "bgm": SOUND_DIR / "sweepnext_2.mp3",
+        "bgm_loop": False,
+    },
     "epilogue": {
         "video": VIDEO_DIR / "sin2.mp4",
         "bgm": SOUND_DIR / "upbeatcorporation_2.mp3",
         "bgm_loop": True,
     },
-
     "ending": {
         "video": None,
         "bgm": SOUND_DIR / "ending.mp3",
@@ -127,7 +126,10 @@ CHARACTER_IMAGES = {
         "smirk": IMG_EMO_DIR / "alex_smirk.png",
         "talking": IMG_EMO_DIR / "alex_talking.png",
         "talking2": IMG_EMO_DIR / "alex_talking2.png",
-        "whatever": IMG_EMO_DIR / "alex_whatever.png"
+        "talking3": IMG_EMO_DIR / "alex_talking3.png",
+        "whatever": IMG_EMO_DIR / "alex_whatever.png",
+        "difficult": IMG_EMO_DIR / "alex_difficult.png",
+        "gaze": IMG_EMO_DIR / "alex_gaze.png"
     },
     "Mason": {
         "idle": IMG_EMO_DIR / "mason_idle.png",
@@ -155,7 +157,10 @@ CHARACTER_IMAGES = {
         "smirk": IMG_EMO_DIR / "mason_smirk.png",
         "talking": IMG_EMO_DIR / "mason_talking.png",
         "talking2": IMG_EMO_DIR / "mason_talking2.png",
-        "whatever": IMG_EMO_DIR / "mason_whatever.png"
+        "talking3": IMG_EMO_DIR / "mason_talking3.png",
+        "whatever": IMG_EMO_DIR / "mason_whatever.png",
+        "difficult": IMG_EMO_DIR / "mason_difficult.png",
+        "talking4": IMG_EMO_DIR / "mason_talking4.png"
     },
 }
 
@@ -165,7 +170,6 @@ SPEAKER_COLORS = {
     "Mason": "#5CC8FF",
     "SYSTEM": "#FF6464",
 }
-
 SPEAKER_ALIGNMENTS = {
     "Alex": "left",
     "Mason": "right",
@@ -232,8 +236,8 @@ st.html("""
     }
     .intro-image {
         width: 100%;
-        max-width: 650px;
-        max-height: 350px;
+        max-width: 900px;
+        max-height: 500px;
         object-fit: contain;
         display: block;
         margin: 25px auto;
@@ -262,6 +266,7 @@ st.html("""
             sans-serif;
         font-size: 15px;
         line-height: 1.8;
+        text-align: left;
     }
     .briefing-text b {
         color: #dffff7;
@@ -417,6 +422,7 @@ defaults = {
     "dialogue_index": 0,
     "mission1_clear": False,
     "mission2_clear": False,
+    "mission3_clear": False,
     "message": "",
     "mission_selector": "MISSION SELECT",
 }
@@ -429,65 +435,44 @@ for key, value in defaults.items():
 # =========================================================
 # 스토리 데이터
 # 형식: ("등장인물", "감정", "대사")
-# SYSTEM은 감정값을 None으로 둡니다.
+# SYSTEM은 감정값을 None
 # =========================================================
-PROLOGUE_DIALOGUES = [
-    ("Alex", "smile", "접속 확인. {agent} 요원, 맞지?"),
-    ("Alex", "eyeclosed", "국제 정보 기관 Global Intelligence Agency에 온 걸 환영해!"),
-    ("Alex", "introduce", "오늘부터 함께 움직이게 될 GIA 특수 정보 요원 Alex야."),
-    ("Mason", "idle", "그리고 난 Mason. 사이버 분석 담당이야."),
-    ("Mason", "smile2", "네 기록은 봤어. 코딩 실력이 꽤 좋다던데?"),
-    ("Alex", "dumbfounded", "Mason, 첫날부터 너무 부담 주지 마."),
-    ("Mason", "whatever", "어차피 몇 분 뒤면 실전 들어갈 텐데 뭘."),
-    ("Alex", "idle", "{agent}. 원래라면 브리핑부터 천천히 진행해야 하는데, 상황이 바뀌었어."),
-    ("Mason", "introduce", "가입 첫날부터 실전이다. 운이 좋은 건지 나쁜 건지는 모르겠지만..!"),
-]
-
 M1_DIALOGUES = [
-    ("SYSTEM", None, "PRIORITY ALERT\nCLASSIFIED INTELLIGENCE RECEIVED"),
-    ("Alex", "talking2", "조금 전 네덜란드에서 긴급 첩보가 들어왔어."),
-    ("Alex", "talking3", "우리가 추적하던 비밀 조직 <i><b>빌더버그</b></i>가 움직이기 시작했대."),
-    ("Mason", "talking2", "그들의 공격 타겟은 평화의 도시 <i><b>헤이그</b></i>. 정확히 무슨 일을 꾸미고 있는지는 아직 몰라."),
-    ("Alex", "idle", "다만 한 가지는 확인했어. 빌더버그가 작전 통신에 사용하는 인공위성을 찾아냈어."),
-    ("Mason", "talking3", "위성 이름은... <i><b>INTELSAT</b></i>이야."),
-    ("Alex", "talking", "빌더버그를 잡을 수 있는 정보가 인공위성 안에 있을지 몰라!"),
-    ("Mason", "determinded", "지금 바로 Intelsat 시스템에 침투할 준비를 시작하자."),
-    ("SYSTEM", None, "⚠️WARNING⚠️\nINTELSAT ORBIT DEVIATION DETECTED"),
-    ("Alex", "surprised", "!!!"),
-    ("Alex", "dumbfounded", "무슨일이야!?"),
-    ("Mason", "deep", "잠깐…… 상황이 안 좋은데.\nIntelsat 위성이 정지궤도를 벗어나고 있어!"),
-    ("Alex", "dumbfounded", "해킹에 문제라도 생겼다는 말이야?"),
-    ("Mason", "worried", "아니. 위성 자체의 문제야. 연료가 거의 소진된 것 같아."),
-    ("Mason", "flustered", "이대로 가면 위성이 곧 묘지궤도로 이동하게 될 거야."),
-    ("Alex", "deep", "묘지궤도?"),
-    ("Mason", "talking3", "수명이 끝난 위성을 보내는 궤도야.\n거기까지 올라가 버리면 Intelsat에 접근할 기회도 없어진다고 보면 돼."),
-    ("Alex", "worried", "흠.. 그럼 시간이 얼마나 남은 거지?"),
-    ("Mason", "dumbfounded", "그걸 지금부터 알아내야해."),
+    ("Mason", "deep", "빌더버그 조직은 이 넓은 헤이그 도시 어디에 폭발물을 설치했을까…"),
+    ("Alex", "surprised", "Mason! GIA 본부에서 연락이 왔어! 혹시 몰라서 나머지 1개 파일도 분석해달라고 했거든!"),
+    ("Mason", "surprised", "뭐라고 답변이 왔어?"),
+    ("Alex", "talking3", "역시 내 예상이 맞았어! 이 파일에는 장소에 대한 힌트가 담겨있었어."),
+    ("Alex", "talking3", "start와 end 단어 사이에 있는 문자열을 분석해보면 알 수 있대."),
+    ("Mason", "talking3", "그래? 그럼 이번에도 그 사이 문자열부터 추출해야겠네."),
+    ("Alex", "firmly", "응! 나는 Intelsat과 통신이 끊기기 전까지 다른 정보를 얻을 수 있는지 계속 확인해 볼게."),
+    ("Mason", "idle", "알았어. 어떤 정보든 모두 수집해 줘."),
+    ("Mason", "firmly", "{agent} 요원! 나와 같이 장소 정보가 담긴 문자열을 추출해보자. 서둘러!"),
 ]
 
 M2_DIALOGUES = [
-    ("SYSTEM", None, "ANALYSIS COMPLETE\nTIME REMAINING : 35 MINUTES"),
-    ("Alex", "flustered", "으아... 35분이라니! 생각보다 시간이 얼마 안남았잖아!"),
-    ("Mason", "determinded", "서둘러 접속해서 필요한 정보를 빼내야 해."),
-    ("Alex", "firmly", "그럼 바로 시작하자!"),
-    ("Mason", "worried", "그게…… 문제가 하나 더 있어."),
-    ("Alex", "surprised", "뭐야?"),
-    ("Mason", "dumbfounded", "Intelsat에 접속하는 비밀번호를 알아내야해."),
-    ("Alex", "firmly", "음... 첩보로 받은 내용에 따르면 <i><b>위성의 궤도 둘레</i></b>와 관련이 있대!"),
-    ("Mason", "firmly", "현재 궤도는 35,786km 이고, 지구 반지름은 6,371km 이니까...\n{agent} 요원! 서둘러 계산해서 비밀번호를 찾아줘!"),
+    ("Alex", "dumbfounded", "장소에 대한 문자열 데이터 맞아? 전혀 모르겠는데…."),
+    ("Mason", "deep", "내가 보기엔 데이터에 어떤 규칙을 적용해 변형시켜 놓은 것 같아."),
+    ("Alex", "puzzled", "규칙? 무슨 규칙인데?"),
+    ("Mason", "talking3", "데이터가 손상되어 있긴 하지만, 뭔가 문자열이 뒤집혀 있는 것으로 보여."),
+    ("Alex", "flustered", "그래? 조금만 더 서둘러줘!"),
+]
+
+M3_DIALOGUES = [
+    ("SYSTEM", None, "Alex의 컴퓨터 화면은 헤이그 도시 지도로 가득 차 있다."),
+    ("Alex", "serious", "Mason! 우리가 찾아낸 힌트 속 장소들은 헤이그 전 지역에 퍼져있어."),
+    ("Mason", "deep", "그러네… 이 많은 곳에 전부 폭발물을 설치하진 않았을 것 같은데…"),
+    ("Mason", "deep", "이 넓은 곳에서 빌더버그 녀석들은 어디를 첫 타깃으로 두었을까?"),
+    ("Alex", "surprised", "아! Mason 그러고보니 아까 그 힌트 데이터 속에 단서가 있었던 것 같아!"),
+    ("Mason", "surprised", "…맞아! 어떤 특정 순서로 공격한다고 했던 것 같은데…!"),
 ]
 
 EPILOGUE_DIALOGUES = [
-    ("SYSTEM", None, "ACCESS CODE : 2647\nAUTHENTICATING...\nACCESS GRANTED"),
-    ("Alex", "happy", "접속됐다!"),
-    ("Mason", "idle", "좋아!\n여기 파일 하나를 발견했어!"),
-    ("Mason", "idle", "파일 이름은 ...<b>PROJECT HAGUE</b>..."),
-    ("Alex", "surprised", "헤이그.\n첩보를 보내온 도시 이름과 일치해."),
-    ("Mason", "sad", "근데 좀 이상한데……"),
-    ("Alex", "dumbfounded", "뭐가??"),
-    ("Mason", "flustered", "파일 내용을 읽을 수가 없어.\n파일이 손상된 것 같아!"),
-    ("Alex", "worried", "{agent} 요원... 첫 임무부터 제대로 걸린 것 같은데."),
-    ("SYSTEM", None, "CLASSIFIED FILE DETECTED\nPROJECT HAGUE\nENCRYPTION : ACTIVE"),
+    ("SYSTEM", None, "TARGET PRIORITY ANALYSIS COMPLETE"),
+    ("Alex", "surprised", "City Hall… 첫 번째 폭발물이 설치된 장소는 시청이야!"),
+    ("Mason", "firmly", "좋아. 이제 정확한 장소를 알아냈어. 바로 현장 대응팀에 전달하자!"),
+    ("Alex", "worried", "하지만 시간이 거의 없어. 공격 예정일은 바로 내일이야."),
+    ("Mason", "determined", "아직 늦지 않았어. 다음 작전에서 반드시 폭발물을 찾아내자."),
+    ("SYSTEM", None, "PRIMARY TARGET IDENTIFIED\nLOCATION : CITY HALL\nSTATUS : URGENT"),
 ]
 
 
@@ -632,6 +617,84 @@ def image_to_base64(path):
 
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
+
+
+# 클릭하면 미션 데이터를 클립보드에 복사합니다.
+def show_copy_data_button(data, key):
+    safe_data = json.dumps(data)
+
+    components.html(f"""
+        <style>
+        .copy-button {{
+                width: 100%;
+                height: 46px;
+        
+                background: rgba(5,23,24,.92);
+        
+                border:
+                    1px solid rgba(98,255,211,.40);
+        
+                color: #a9cfc5;
+        
+                font-family:
+                    Consolas,
+                    "Courier New",
+                    monospace;
+        
+                font-size: 13px;
+                letter-spacing: .08em;
+        
+                cursor: pointer;
+        
+                transition: .15s ease;
+            }}
+        
+            .copy-button:hover {{
+                border-color: #62ffd3;
+                color: #62ffd3;
+            }}
+        
+            .copy-button.copied {{
+                border-color: #68ffbd;
+                color: #68ffbd;
+            }}
+        </style>
+        <button id="copy-{key}" class="copy-button" type="button">
+            💾 COPY MISSION DATA
+        </button>
+
+        <script>
+            const button = document.getElementById("copy-{key}");
+            const data = {safe_data};
+
+            button.addEventListener("click", async () => {{
+                try {{
+                    await navigator.clipboard.writeText(data);
+                }} catch (error) {{
+                    const textarea = document.createElement("textarea");
+                    textarea.value = data;
+                    textarea.style.position = "fixed";
+                    textarea.style.opacity = "0";
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand("copy");
+                    textarea.remove();
+                }}
+
+                button.textContent = "✓ DATA COPIED TO CLIPBOARD";
+                button.classList.add("copied");
+                setTimeout(() => {{
+                    button.textContent =
+                        "💾 COPY MISSION DATA";
+
+                    button.classList.remove("copied");
+                }}, 2000);
+            }});
+        </script>
+        """,
+        height=55,
+    )
 
 def show_dialogue(dialogues, next_page):
     idx = st.session_state.dialogue_index
@@ -996,7 +1059,7 @@ def registered_page():
     """)
 
     if st.button("ENTER SECURE NETWORK", use_container_width=True):
-        go("prologue")
+        go("intro")
 
 
 # =========================================================
@@ -1008,19 +1071,21 @@ def intro():
     st.html(f"""
     <div class="gia-panel" style="margin-top:90px;text-align:center;">
         <div class="terminal-title">
-            CLASSIFIED OPERATION : 
-            <span style="color:rgba(255,100,100,.8);font-weight: 700;">CHAPTER 01</span>
-        </div>
-        <div class="episode-title">EPISODE 1</div>
-        <div style="font-size:46px;font-weight:800;margin:16px 0;color:white;">
-            INTELSAT 해킹 작전
+            CLASSIFIED OPERATION
         </div>
 
         <img class="intro-image" src="data:image/png;base64,{intro_img}">
 
-        <div class="terminal-dim">
-            GIA 상황실에 악명높은 빌더버그 조직이 헤이그 도시를 파괴한다는 첩보가 도착했다.<br>
-            빌더버그가 사용하는 인공위성 Intelsat에 접속하여 그들의 도시 파괴를 막아야한다!
+        <div class="intro-briefing">
+            <div class="briefing-label">
+                지난 이야기
+            </div>
+
+            <div class="briefing-text">
+                빌더버그 조직이 헤이그 도시를 파괴하려는 날짜를 드디어 알아냈다. 바로 내일!<br>
+                Intelsat 인공위성도 점점 묘지 궤도를 향하고 있어 남은 시간이 많지 않다.<br>
+                아직 분석하지 않은 마지막 파일에서 정확한 공격 장소를 찾아내야 한다.<br>
+            </div>
         </div>
     </div>
     """)
@@ -1035,56 +1100,88 @@ def intro():
 MISSION_CONFIG = {
     "mission1": {
         "number": "01",
-        "title": "남은 시간을 계산하라",
+        "title": "필요한 부분 추출하기",
         "image": MISSION1_IMAGE,
+        "alert_html": '',
         "prompt_html": """
-            <b class="mason-name">Mason</b><br>
-            현재 위치에서 묘지궤도까지 최소 직선거리부터 구해야해.<br>
-            아래 공식을 활용해서 남은 시간을 구해줘!<br><br>
-        """,
-        "card_label": "FORMULA",
-        "card_value": "시간(s) = 거리(km) / 속도(km/s)",
-        "input_label": "TIME REMAINING / MIN",
-        "submit_label": "SUBMIT ANALYSIS",
-        "answer": 35,
-        "wrong_message": "ANALYSIS FAILED — 계산 결과를 다시 확인하십시오.",
-        "success_message": "ANALYSIS COMPLETE",
-        "continue_label": "CONTINUE OPERATION",
+                        <b class="mason-name">Mason</b><br>
+                        장소 정보는 <b>start</b>와 <b>end</b> 사이에 있어.<br>
+                        find()로 두 단어의 위치를 찾은 다음 문자열 슬라이싱으로<br>
+                        그 사이에 있는 문자열만 정확하게 추출해줘!<br><br>
+                    """,
+        "clipboard_data": '''file_b = "a8f__GIAx91_hague_trace__q7start#.redro lacitebahpla yb kcatta trats eW .yti@sr@@evinu,tna@lp rae@@lcun,llam@ gni@@ppoh@s,lla@h@ y@tic,tekr@am kcots,noi@tats eci@l@op,ret@aeht:secalp gniwollof fo eno si tegrat ehT#end__sat_link_77x__archive"''',
+        "card_label": "STRING TOOLS",
+        "card_value": "find() : 특정 문자열이 처음 등장하는 위치 반환<br>문자열[시작:끝] : 원하는 범위 추출",
+        "input_label": "EXTRACTED LOCATION DATA",
+        "submit_label": "VERIFY DATA",
+        "answer": '#.redro lacitebahpla yb kcatta trats eW .yti@sr@@evinu,tna@lp rae@@lcun,llam@ gni@@ppoh@s,lla@h@ y@tic,tekr@am kcots,noi@tats eci@l@op,ret@aeht:secalp gniwollof fo eno si tegrat ehT#',
+        "answer_placeholder": 'start와 end 사이의 문자열을 입력하세요.',
+        "wrong_message": "EXTRACTION FAILED — start/end 위치와 슬라이싱 범위를 다시 확인하세요.",
+        "success_message": "LOCATION DATA EXTRACTED",
+        "continue_label": "NEXT OPERATION",
         "next_page": "mission2_story",
     },
     "mission2": {
         "number": "02",
-        "title": "INTELSAT 접속 암호를 찾아라",
+        "title": "데이터 속 장소 힌트 찾기",
         "image": MISSION2_IMAGE,
-        "alert_html": """
-            <div class="mission-alert">
-                ACCESS DENIED<br>
-                PASSWORD REQUIRED
-            </div>
-        """,
+        "alert_html": '',
         "prompt_html": """
-            <b class="mason-name">Mason</b><br>
-            위성의 고도는 지표면부터 잰 거리야.<br>
-            원의 둘레 공식을 사용해서 위성 궤도의 둘레를 구하자!<br><br>
-        """,
-        "card_label": "ENCRYPTED MESSAGE",
-        "card_value": "원의 둘레 = 원의 반지름 ⨯ 2 ⨯ 원주율",
-        "input_label": "PASSWORD",
-        "submit_label": "CONNECT",
-        "answer": 2647,
-        "wrong_message": "ACCESS DENIED — 접속 암호가 일치하지 않습니다.",
-        "success_message": "ACCESS CODE ACCEPTED — AUTHENTICATING...",
-        "continue_label": "ENTER INTELSAT SYSTEM",
-        "next_page": "epilogue",
+                    <b class="mason-name">Mason</b><br>
+                    데이터가 거꾸로 뒤집혀 있고, 일부 문자도 다른 기호로 바뀌어 있어.<br>
+                    문자열을 뒤집은 뒤 replace()를 사용해서 장소 목록을 복원해줘!<br><br>
+                    """,
+        "card_label": "STRING TOOLS",
+        "card_value": "문자열[::-1] : 문자열 뒤집기<br>replace(기존, 변경) : 특정 문자열 바꾸기",
+        "input_label": "RECOVERED LOCATIONS",
+        "submit_label": "SUBMIT ANALYSIS",
+        "answer": 'theater,police station,stock market,city hall,shopping mall,nuclear plant,university',
+        "answer_placeholder": '복원한 장소 목록을 입력하세요.',
+        "wrong_message": "ANALYSIS FAILED — 문자열 방향과 치환할 문자를 다시 확인하세요.",
+        "success_message": "LOCATION CLUES RECOVERED",
+        "continue_label": "NEXT OPERATION",
+        "next_page": "mission3_story",
     },
+    "mission3": {
+        "number": "03",
+        "title": "첫 번째 폭발물이 설치된 장소를 찾아라",
+        "image": MISSION3_IMAGE,
+        "alert_html": '',
+        "prompt_html": """
+                        <b class="mason-name">Mason</b><br>
+                        미션 2에서 복원한 장소들을 다시 확인해봐.<br>
+                        힌트에는 <b>알파벳 순서대로 공격을 시작한다</b>고 적혀 있었어.<br>
+                        장소 문자열을 리스트로 나눈 뒤 정렬해서 첫 번째 타깃을 찾아줘!<br><br>
+                    """,
+        "card_label": "LIST TOOLS",
+        "card_value": "split(',') : 문자열을 리스트로 분리<br>sort() / sorted() : 리스트를 오름차순으로 정렬",
+        "input_label": "FIRST TARGET",
+        "submit_label": "CONFIRM TARGET",
+        "answer": 'city hall',
+        "answer_placeholder": '첫 번째 공격 장소를 입력하세요.',
+        "wrong_message": "TARGET MISMATCH — 장소 목록의 정렬 순서를 다시 확인하세요.",
+        "success_message": "PRIMARY TARGET IDENTIFIED — CITY HALL",
+        "continue_label": "EPILOGUE",
+        "next_page": "epilogue",
+    }
 }
 
 
+# 공통 미션 UI와 정답 판정을 처리합니다.
 def render_mission_page(mission_key):
-    """공통 미션 UI와 정답 판정을 처리합니다."""
     config = MISSION_CONFIG[mission_key]
     image_data = image_to_base64(config["image"])
     alert_html = config.get("alert_html", "")
+    card_html = ''
+    answer = None
+
+    if config.get("card_value"):
+        card_html = f"""
+        <div class="mission-info-card">
+            <div class="data-label">{config["card_label"]}</div>
+            <div class="data-value">{config["card_value"]}</div>
+        </div>
+        """
 
     st.html(f"""
     <div class="gia-panel">
@@ -1094,37 +1191,38 @@ def render_mission_page(mission_key):
         {alert_html}
 
         <div class="mission-image-wrap">
-            <img
-                src="data:image/png;base64,{image_data}"
-                class="mission-image"
-            >
+            <img src="data:image/png;base64,{image_data}" class="mission-image">
         </div>
 
         <div class="terminal-main">
             {config["prompt_html"]}
         </div>
 
-        <div class="mission-info-card">
-            <div class="data-label">{config["card_label"]}</div>
-            <div class="data-value">{config["card_value"]}</div>
-        </div>
+        {card_html}
     </div>
     """)
 
-    answer = st.number_input(
-        config["input_label"],
-        min_value=0,
-        step=1,
-        value=None,
-        placeholder="정수 입력",
-        key=f"{mission_key}_answer",
-    )
+    clipboard_data = config.get("clipboard_data")
+    if clipboard_data:
+        show_copy_data_button(clipboard_data.strip(), mission_key)
 
-    if st.button(
-        config["submit_label"],
-        use_container_width=True,
-        key=f"{mission_key}_submit",
-    ):
+    if config["answer"].isdigit():
+        answer = st.number_input(
+            config["input_label"],
+            min_value=0,
+            step=1,
+            value=None,
+            placeholder="정수 입력",
+            key=f"{mission_key}_answer"
+        )
+    else:
+        answer = st.text_input(
+            config["input_label"], 
+            placeholder=config['answer_placeholder'], 
+            value=None, key=f"{mission_key}_answer"
+        )
+
+    if st.button(config["submit_label"], use_container_width=True, key=f"{mission_key}_submit"):
         is_correct = answer == config["answer"]
         st.session_state[f"{mission_key}_clear"] = is_correct
         st.session_state.message = "success" if is_correct else "wrong"
@@ -1146,9 +1244,10 @@ def render_mission_page(mission_key):
 
 def mission1():
     render_mission_page("mission1")
-
 def mission2():
     render_mission_page("mission2")
+def mission3():
+    render_mission_page("mission3")
 
 
 # =========================================================
@@ -1157,12 +1256,14 @@ def mission2():
 def ending():
     st.html(f"""
     <div class="gia-panel" style="margin-top:90px;text-align:center;">
-        <div class="terminal-title warning">CLASSIFIED FILE DETECTED</div>
+        <div class="terminal-title warning">PRIMARY TARGET IDENTIFIED</div>
         <div style="font-size:44px;font-weight:900;color:white;margin:28px 0;">
-            PROJECT HAGUE
+            CITY HALL
         </div>
         <div class="terminal-dim">
-            과연 이들은 시간 내에 손상된 파일을 복구하여<br>빌더버그의 공격을 무사히 막을 수 있을까?<br>
+            빌더버그 조직의 첫 번째 공격 장소를 찾아냈다.<br>
+            공격 예정일은 바로 내일.<br>
+            이제 남은 것은 폭발물을 찾아 계획을 완전히 무산시키는 것뿐이다.<br>
         </div>
         <div style="
             margin-top:60px;
@@ -1191,7 +1292,7 @@ def render_current_page():
             st.html("""
             <div class="chapter-label">
                 CHAPTER 01 - 
-                <span style="color:rgba(255,100,100,.8);font-weight: 700;">EP.1</span>
+                <span style="color:rgba(255,100,100,.8);font-weight: 700;">EP.3</span>
             </div>
             """)
         with selector_col:
@@ -1200,12 +1301,14 @@ def render_current_page():
     page_routes = {
         "register": register_page,
         "registered": registered_page,
-        "prologue": lambda: show_dialogue(PROLOGUE_DIALOGUES, "intro"),
+        # "prologue": lambda: show_dialogue(PROLOGUE_DIALOGUES, "intro"),
         "intro": intro,
         "mission1_story": lambda: show_dialogue(M1_DIALOGUES, "mission1"),
         "mission1": mission1,
         "mission2_story": lambda: show_dialogue(M2_DIALOGUES, "mission2"),
         "mission2": mission2,
+        "mission3_story": lambda: show_dialogue(M3_DIALOGUES, "mission3"),
+        "mission3": mission3,
         "epilogue": lambda: show_dialogue(EPILOGUE_DIALOGUES, "ending"),
         "ending": ending,
     }

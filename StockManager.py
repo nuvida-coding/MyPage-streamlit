@@ -6,29 +6,40 @@ import pandas as pd
 # --------------------------------------------------
 # 유틸 함수
 # --------------------------------------------------
-# 계산 열을 갱신하는 함수 (중복제거, 재고금액/재고상태 추가)
+# 상품 데이터를 갱신하는 함수 (중복제거, 재고금액/재고상태 추가)
 def update_inventory_data(df):
     # 원본 DataFrame이 직접 변경되지 않도록 복사
     df = df.copy()
 
+    # 1. 중복 제거
     df.drop_duplicates(inplace=True)
 
-    # 재고 금액 = 가격 × 재고
+    # 2. 재고 금액 = 가격 × 재고
     df["재고금액"] = df["가격"] * df["재고"]
 
-    # 기본 재고 상태
+    # 3. 기본 재고 상태
     df["재고상태"] = "정상"
-
     # 재고가 안전재고 이하이면 부족
     shortage_condition = df["재고"] <= df["안전재고"]
     df.loc[shortage_condition, "재고상태"] = "부족"
-
     # 재고가 0이면 품절
     sold_out_condition = df["재고"] == 0
     df.loc[sold_out_condition, "재고상태"] = "품절"
 
     return df
 
+# 매출 데이터를 갱신하는 함수(판매일자 자료형, 상품명, 분류, 매출액)
+def update_sales_data(store_df, sales_df):
+    # 원본 DataFrame이 직접 변경되지 않도록 복사
+    df = sales_df.copy()
+
+    df['판매일자'] = pd.to_datetime(df['판매일자'])
+
+    df = df.merge(store_df[['상품코드', '상품명', '분류']], on='상품코드', how='left')
+
+    df['매출액'] = df['가격'] * df['판매수량']
+
+    return df
 
 # --------------------------------------------------
 # 페이지 기본 설정
@@ -42,24 +53,23 @@ st.set_page_config(
 st.title("📦 편의점 재고 관리 시스템")
 st.caption("상품을 조회하고 재고를 추가하거나 수정해 보세요.")
 
-data = {
-    "상품코드": [],
-    "상품명": [],
-    "분류": [],
-    "가격": [],
-    "재고": [],
-    "안전재고": []
-}
-reset_df = pd.DataFrame(data)
-
+# 상품 정보 CSV
 if 'inventory' not in st.session_state:
-    st.session_state.inventory = update_inventory_data(reset_df)
-    df = st.session_state.inventory
+    st.session_state.inventory = pd.DataFrame()
+    # df = st.session_state.inventory
 if 'file_name' not in st.session_state:
     st.session_state.file_name = ""
+# 매출 데이터 CSV
+if 'sales' not in st.session_state:
+    st.session_state.sales = pd.DataFrame()
+if 'sales_file_name' not in st.session_state:
+    st.session_state.sales_file_name = ''
 
-df = st.session_state.inventory
-file_name = st.session_state.file_name
+
+# df = st.session_state.inventory
+# sales_df = st.session_state.sales
+# file_name = st.session_state.file_name
+# sales_file_name = st.session_state.sales_file_name
 
 
 
@@ -67,10 +77,10 @@ file_name = st.session_state.file_name
 # 3. 사이드바
 # --------------------------------------------------
 with st.sidebar:
-    st.header("⚙️ 관리 메뉴")
+    st.header("⚙️ 상품 데이터")
 
     csv_file = st.file_uploader('재고 파일을 선택하세요.', type=['csv'])
-    if st.button("📤 선택한 파일 불러오기", use_container_width=True):
+    if st.button("📤 선택한 파일 불러오기", use_container_width=True, key='inventory_button'):
         if csv_file is None:
             st.error('먼저 csv 파일을 선택하세요.')
         else:
@@ -93,11 +103,12 @@ with st.sidebar:
                     st.error("CSV 파일에 다음 열이 없습니다: " + ", ".join(missing_columns))
                 else:
                     st.session_state.inventory = update_inventory_data(uploaded_df)
+                    
                     st.session_state.file_name = csv_file.name
                     st.session_state.dupl_cnt = len(uploaded_df) - len(st.session_state.inventory)
                     st.success("파일을 불러왔습니다.")
-                    csv_file = None
-                    st.rerun()
+                    # csv_file = None
+                    # st.rerun()
 
             except Exception as error:
                 st.error(f"파일을 읽는 중 오류가 발생했습니다: {error}")
@@ -107,10 +118,56 @@ with st.sidebar:
         st.write(f"등록된 상품: {len(st.session_state.inventory)}개")
         st.write(f"삭제된 중복 상품: {st.session_state.dupl_cnt}개")
 
+
+    st.divider()
+
+
+    st.header("⚙️ 매출 데이터")
+    
+    sales_files = st.file_uploader('매출 파일을 선택하세요.', 
+                                type=['csv'], 
+                                accept_multiple_files=True)        # 여러 매출 파일 입력받아서 합치기
+    # 상품 데이터부터 등록 후 가능
+    if st.session_state.inventory.empty:
+        st.warning('먼저 상품 csv 파일을 업로드하세요.')
+    else:  
+        if st.button("📤 선택한 파일 불러오기", use_container_width=True, key='sales_button'):
+            if not sales_files:
+                st.error('먼저 csv 파일을 선택하세요.')
+            else:
+                try:
+                    uploaded_sales = pd.concat([pd.read_csv(file) for file in sales_files], ignore_index=True)
+
+                    required_sales_columns = [
+                        "판매일자",
+                        '상품코드',
+                        "가격",
+                        "판매수량"
+                    ]
+
+                    # 필요한 열이 모두 있는지 검사
+                    missing_columns = [column for column in required_sales_columns if column not in uploaded_sales.columns]
+
+                    if missing_columns:
+                        st.error("CSV 파일에 다음 열이 없습니다: " + ", ".join(missing_columns))
+                    else:
+                        st.session_state.sales = update_sales_data(st.session_state.inventory, uploaded_sales)
+                        
+                        st.session_state.sales_file_name = ', '.join(file.name for file in sales_files)
+                        st.success("파일을 불러왔습니다.")
+                        # sales_files = None
+
+                except Exception as error:
+                    st.error(f"파일을 읽는 중 오류가 발생했습니다: {error}")
+
+    if st.session_state.sales_file_name != '':
+        st.write(f"등록된 매출 파일: {st.session_state.sales_file_name}")
+
+
     st.divider()
 
     # CSV 파일로 저장할 데이터 만들기
-    csv_data = df.to_csv(index=False, encoding="utf-8-sig")     # cp949
+    csv_data = st.session_state.inventory.to_csv(index=False, encoding="utf-8-sig")     # cp949
 
     st.download_button(
         label="📥 재고 데이터 다운로드",
@@ -120,6 +177,9 @@ with st.sidebar:
         use_container_width=True
     )
 
+
+store_df = st.session_state.inventory
+sales_df = st.session_state.sales
 
 # --------------------------------------------------
 # 6. 기능별 탭 생성
@@ -132,9 +192,11 @@ with st.sidebar:
 #     "🚚 입출고",
 #     "📝 일괄 편집"
 # ])
-tab1, tab2 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "📊 현황",
-    "🔎 재고 조회"
+    "🔎 재고 조회",
+    "🚚 입출고",
+    "📈 매출 분석"
 ])
 # 매출 분석 탭: 인기상품 Top 10(가로막대), 일별 매출 추이(line), 분류별 매출 추이(bar), 요일별 매출(bar), 가격과 판매량의 관계(scatter)
 # 열: 판매일자, 상품코드, 상품명, 분류, 가격, 판매수량
@@ -144,19 +206,19 @@ tab1, tab2 = st.tabs([
 # ==================================================
 with tab1:
     st.subheader("재고 현황")
-    if len(df) > 0:
+    if len(store_df) > 0:
 
         # 요약 정보 계산
-        total_products = len(df)
-        total_stock = df["재고"].sum()
-        total_value = df["재고금액"].sum()
+        total_products = len(store_df)
+        total_stock = store_df["재고"].sum()
+        total_value = store_df["재고금액"].sum()
 
         shortage_count = len(
-            df[df["재고상태"] == "부족"]
+            store_df[store_df["재고상태"] == "부족"]
         )
 
         sold_out_count = len(
-            df[df["재고상태"] == "품절"]
+            store_df[store_df["재고상태"] == "품절"]
         )
 
         # metric 위젯 배치 (중요한 숫자 값을 카드 형태로 강조해서 보여준다)
@@ -200,7 +262,7 @@ with tab1:
         #     st.markdown("#### 전체 상품 목록")
 
         #     st.dataframe(
-        #         df,
+        #         store_df,
         #         width='stretch',
         #         hide_index=True,
         #         column_config={
@@ -218,7 +280,7 @@ with tab1:
         # with right_column:
         st.markdown("#### 분류별 재고 수량")
 
-        category_stock = df.groupby("분류")["재고"].sum().sort_values(ascending=False)
+        category_stock = store_df.groupby("분류")["재고"].sum().sort_values(ascending=False)
         st.bar_chart(category_stock)
 
 
@@ -228,10 +290,10 @@ with tab1:
         st.markdown('#### 분류별 통계')
 
         # 분류 선택
-        selected_category = st.selectbox('분류를 선택하세요.', sorted(df['분류'].unique()))
+        selected_category = st.selectbox('분류를 선택하세요.', sorted(store_df['분류'].unique()))
 
         # 선택한 분류의 데이터 조회
-        category_df = df[df['분류'] == selected_category]
+        category_df = store_df[store_df['분류'] == selected_category]
 
         # 통계 계산
         product_count = category_df['상품코드'].count()
@@ -273,7 +335,7 @@ with tab1:
 
         st.markdown("#### 관리가 필요한 상품")
 
-        warning_df = df[df["재고상태"].isin(["부족", "품절"])]
+        warning_df = store_df[store_df["재고상태"].isin(["부족", "품절"])]
 
         if len(warning_df) == 0:
             st.success("현재 재고가 부족한 상품이 없습니다.")
@@ -300,16 +362,16 @@ with tab1:
 # ==================================================
 with tab2:
     st.subheader("조건에 맞는 상품 조회")
-    if len(df) > 0:
+    if len(store_df) > 0:
         search_col1, search_col2 = st.columns(2)
 
         with search_col1:
             keyword = st.text_input("상품명 검색", placeholder="상품명의 일부를 입력하세요.")
-            category_options = sorted(df["분류"].unique())
+            category_options = sorted(store_df["분류"].unique())
             selected_categories = st.multiselect("분류 선택", options=category_options, default=category_options)
 
         with search_col2:
-            maximum_price = int(df["가격"].max())
+            maximum_price = int(store_df["가격"].max())
             price_range = st.slider(
                 "가격 범위",
                 min_value=0,
@@ -324,7 +386,7 @@ with tab2:
             )
 
         # 원본 DataFrame 복사
-        result_df = df.copy()
+        result_df = store_df.copy()
 
         # 1. 상품명 조건
         if keyword:
@@ -366,7 +428,7 @@ with tab2:
 # ==================================================
 # with tab3:
 #     st.subheader("새로운 상품 등록")
-#     if len(df) > 0:
+#     if len(store_df) > 0:
 #         # form 안의 위젯은 제출 버튼을 누를 때 한꺼번에 처리
 #         with st.form("add_product_form"):
 
@@ -428,7 +490,7 @@ with tab2:
 #             if new_code == "" or new_name == "":
 #                 st.error("상품 코드와 상품명을 모두 입력하세요.")
 
-#             elif new_code in df["상품코드"].values:
+#             elif new_code in store_df["상품코드"].values:
 #                 st.error("이미 사용 중인 상품 코드입니다.")
 
 #             else:
@@ -443,7 +505,7 @@ with tab2:
 
 #                 # 기존 DataFrame과 새로운 DataFrame 합치기
 #                 updated_df = pd.concat(
-#                     [df, new_product],
+#                     [store_df, new_product],
 #                     ignore_index=True
 #                 )
 
@@ -459,19 +521,19 @@ with tab2:
 # ==================================================
 # with tab4:
 #     st.subheader("상품 정보 수정")
-    # if len(df) > 0:
+    # if len(store_df) > 0:
     #     selected_code = st.selectbox(
     #         "수정할 상품 선택",
-    #         options=df["상품코드"],
+    #         options=store_df["상품코드"],
     #         format_func=lambda code: (
     #             f"{code} - "
-    #             f"{df.loc[df['상품코드'] == code, '상품명'].iloc[0]}"
+    #             f"{store_df.loc[store_df['상품코드'] == code, '상품명'].iloc[0]}"
     #         )
     #     )
 
     #     # 선택된 상품 조회
-    #     selected_condition = df["상품코드"] == selected_code
-    #     selected_product = df[selected_condition].iloc[0]
+    #     selected_condition = store_df["상품코드"] == selected_code
+    #     selected_product = store_df[selected_condition].iloc[0]
 
     #     with st.form("update_product_form"):
 
@@ -571,98 +633,67 @@ with tab2:
 # # ==================================================
 # # 탭 5. 재고 입출고
 # # ==================================================
-# with tab5:
-#     st.subheader("재고 입출고 처리")
-#     if len(df) > 0:
-    #     movement_col1, movement_col2 = st.columns(2)
+with tab3:
+    st.subheader("재고 입출고 처리")
+    if len(store_df) > 0:
+        movement_col1, movement_col2 = st.columns(2)
 
-    #     with movement_col1:
-    #         movement_code = st.selectbox(
-    #             "상품 선택",
-    #             options=df["상품코드"],
-    #             key="movement_product",
-    #             format_func=lambda code: (
-    #                 f"{code} - "
-    #                 f"{df.loc[df['상품코드'] == code, '상품명'].iloc[0]}"
-    #             )
-    #         )
+        with movement_col1:
+            movement_code = st.selectbox(
+                "상품 선택",
+                options=store_df["상품코드"],
+                key="movement_product",
+                format_func=lambda code: (
+                    f"{code} - "
+                    f"{store_df.loc[store_df['상품코드'] == code, '상품명'].iloc[0]}"
+                )
+            )
 
-    #         movement_type = st.radio(
-    #             "작업 선택",
-    #             options=["입고", "출고"],
-    #             horizontal=True
-    #         )
+            movement_type = st.radio(
+                "작업 선택",
+                options=["입고", "출고"],
+                horizontal=True
+            )
 
-    #         movement_amount = st.number_input(
-    #             "수량",
-    #             min_value=1,
-    #             value=1,
-    #             step=1
-    #         )
+            movement_amount = st.number_input(
+                "수량",
+                min_value=1,
+                value=1,
+                step=1
+            )
 
-    #     with movement_col2:
-    #         movement_condition = (
-    #             df["상품코드"] == movement_code
-    #         )
+        with movement_col2:
+            movement_condition = (store_df["상품코드"] == movement_code)
+            current_product = store_df[movement_condition].iloc[0]
 
-    #         current_product = df[movement_condition].iloc[0]
+            st.info(
+                f"""
+                상품명: {current_product["상품명"]}  
+                현재 재고: {current_product["재고"]}개  
+                안전 재고: {current_product["안전재고"]}개  
+                재고 상태: {current_product["재고상태"]}
+                """
+            )
 
-    #         st.info(
-    #             f"""
-    #             상품명: {current_product["상품명"]}  
-    #             현재 재고: {current_product["재고"]}개  
-    #             안전 재고: {current_product["안전재고"]}개  
-    #             재고 상태: {current_product["재고상태"]}
-    #             """
-    #         )
+        if st.button("입출고 적용", type="primary", use_container_width=True):
+            condition = (st.session_state.inventory["상품코드"] == movement_code)
 
-    #     if st.button(
-    #         "입출고 적용",
-    #         type="primary",
-    #         use_container_width=True
-    #     ):
+            current_stock = st.session_state.inventory.loc[condition, "재고"].iloc[0]
 
-    #         condition = (
-    #             st.session_state.inventory["상품코드"]
-    #             == movement_code
-    #         )
+            if movement_type == "입고":
+                st.session_state.inventory.loc[condition, "재고"] = current_stock + movement_amount
+                st.success(f"{movement_amount}개가 입고되었습니다.")
 
-    #         current_stock = st.session_state.inventory.loc[
-    #             condition,
-    #             "재고"
-    #         ].iloc[0]
+            else:
+                if movement_amount > current_stock:
+                    st.error("현재 재고보다 많은 수량을 출고할 수 없습니다.")
 
-    #         if movement_type == "입고":
-    #             st.session_state.inventory.loc[
-    #                 condition,
-    #                 "재고"
-    #             ] = current_stock + movement_amount
+                else:
+                    st.session_state.inventory.loc[condition,"재고"] = current_stock - movement_amount
+                    st.success(f"{movement_amount}개가 출고되었습니다.")
 
-    #             st.success(
-    #                 f"{movement_amount}개가 입고되었습니다."
-    #             )
-
-    #         else:
-    #             if movement_amount > current_stock:
-    #                 st.error(
-    #                     "현재 재고보다 많은 수량을 출고할 수 없습니다."
-    #                 )
-
-    #             else:
-    #                 st.session_state.inventory.loc[
-    #                     condition,
-    #                     "재고"
-    #                 ] = current_stock - movement_amount
-
-    #                 st.success(
-    #                     f"{movement_amount}개가 출고되었습니다."
-    #                 )
-
-    #         st.session_state.inventory = update_inventory_data(
-    #             st.session_state.inventory
-    #         )
-
-    #         st.rerun()
+            st.session_state.inventory = update_inventory_data(st.session_state.inventory)
+            # st.rerun()
 
 
 # ==================================================
@@ -670,7 +701,7 @@ with tab2:
 # ==================================================
 # with tab6:
 #     st.subheader("표에서 직접 수정하기")
-#     if len(df) > 0:
+#     if len(store_df) > 0:
     #     st.write(
     #         "상품명, 분류, 가격, 재고, 안전재고를 표에서 직접 수정할 수 있습니다."
     #     )
@@ -685,7 +716,7 @@ with tab2:
     #     ]
 
     #     edited_df = st.data_editor(
-    #         df[editable_columns],
+    #         store_df[editable_columns],
     #         use_container_width=True,
     #         hide_index=True,
     #         disabled=["상품코드"],
@@ -730,3 +761,127 @@ with tab2:
 
     #         st.success("수정 내용이 저장되었습니다.")
     #         st.rerun()
+
+# ==================================================
+# 탭 4. 매출 분석
+# ==================================================
+with tab4:
+    st.subheader("📈 매출 분석")
+
+    if len(sales_df) == 0:
+        st.info("사이드바에서 매출 CSV 파일을 불러와 주세요.")
+
+    else:
+        # --------------------------------------------------
+        # 기본 매출 통계
+        # --------------------------------------------------
+        total_sales = sales_df["매출액"].sum()
+        total_quantity = sales_df["판매수량"].sum()
+        order_count = len(sales_df)
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            "총 매출",
+            f"{total_sales:,.0f}원"
+        )
+        col2.metric(
+            "총 판매수량",
+            f"{total_quantity:,.0f}개"
+        )
+        col3.metric(
+            "판매 기록",
+            f"{order_count:,}건"
+        )
+
+        st.divider()
+
+        # --------------------------------------------------
+        # 1. 인기상품 Top 10
+        # --------------------------------------------------
+        st.markdown("#### 🏆 인기상품 Top 10")
+
+        top_products = (
+            sales_df
+            .groupby("상품명")["판매수량"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(10)
+        )
+
+        st.bar_chart(top_products, horizontal=True)
+
+        st.divider()
+
+        # --------------------------------------------------
+        # 2. 일별 매출 추이
+        # --------------------------------------------------
+        st.markdown("#### 📅 일별 매출 추이")
+
+        daily_sales = (
+            sales_df
+            .groupby("판매일자")["매출액"]
+            .sum()
+            .sort_index()
+        )
+
+        st.line_chart(daily_sales)
+
+        st.divider()
+
+        # --------------------------------------------------
+        # 3. 분류별 매출
+        # --------------------------------------------------
+        st.markdown("#### 📦 분류별 매출")
+
+        category_sales = (
+            sales_df
+            .groupby("분류")["매출액"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        st.bar_chart(category_sales)
+
+        st.divider()
+
+        # --------------------------------------------------
+        # 4. 요일별 매출
+        # --------------------------------------------------
+        st.markdown("#### 📆 요일별 매출")
+
+        # 요일 번호
+        # 월요일 = 0, 화요일 = 1, ..., 일요일 = 6
+        sales_df["요일번호"] = sales_df["판매일자"].dt.dayofweek
+
+        weekday_sales = (
+            sales_df
+            .groupby("요일번호")["매출액"]
+            .sum()
+            .reindex(range(7), fill_value=0)
+        )
+
+        weekday_sales.index = [
+            "월",
+            "화",
+            "수",
+            "목",
+            "금",
+            "토",
+            "일"
+        ]
+
+        st.bar_chart(weekday_sales)
+
+        st.divider()
+
+        # --------------------------------------------------
+        # 5. 가격과 판매량의 관계
+        # --------------------------------------------------
+        st.markdown("#### 🔍 가격과 판매량의 관계")
+
+        st.scatter_chart(
+            sales_df,
+            x="가격",
+            y="판매수량"
+        )
