@@ -65,6 +65,16 @@ if 'sales' not in st.session_state:
 if 'sales_file_name' not in st.session_state:
     st.session_state.sales_file_name = ''
 
+# 조회 조건을 rerun 후에도 유지하기 위한 상태값
+if 'search_keyword' not in st.session_state:
+    st.session_state.search_keyword = ''
+if 'search_categories' not in st.session_state:
+    st.session_state.search_categories = []
+if 'search_price_range' not in st.session_state:
+    st.session_state.search_price_range = None
+if 'search_stock_status' not in st.session_state:
+    st.session_state.search_stock_status = '전체'
+
 
 # df = st.session_state.inventory
 # sales_df = st.session_state.sales
@@ -119,49 +129,49 @@ with st.sidebar:
         st.write(f"삭제된 중복 상품: {st.session_state.dupl_cnt}개")
 
 
-    st.divider()
+    # st.divider()
 
 
-    st.header("⚙️ 매출 데이터")
+    # st.header("⚙️ 매출 데이터")
     
-    sales_files = st.file_uploader('매출 파일을 선택하세요.', 
-                                type=['csv'], 
-                                accept_multiple_files=True)        # 여러 매출 파일 입력받아서 합치기
-    # 상품 데이터부터 등록 후 가능
-    if st.session_state.inventory.empty:
-        st.warning('먼저 상품 csv 파일을 업로드하세요.')
-    else:  
-        if st.button("📤 선택한 파일 불러오기", use_container_width=True, key='sales_button'):
-            if not sales_files:
-                st.error('먼저 csv 파일을 선택하세요.')
-            else:
-                try:
-                    uploaded_sales = pd.concat([pd.read_csv(file) for file in sales_files], ignore_index=True)
+    # sales_files = st.file_uploader('매출 파일을 선택하세요.', 
+    #                             type=['csv'], 
+    #                             accept_multiple_files=True)        # 여러 매출 파일 입력받아서 합치기
+    # # 상품 데이터부터 등록 후 가능
+    # if st.session_state.inventory.empty:
+    #     st.warning('먼저 상품 csv 파일을 업로드하세요.')
+    # else:  
+    #     if st.button("📤 선택한 파일 불러오기", use_container_width=True, key='sales_button'):
+    #         if not sales_files:
+    #             st.error('먼저 csv 파일을 선택하세요.')
+    #         else:
+    #             try:
+    #                 uploaded_sales = pd.concat([pd.read_csv(file) for file in sales_files], ignore_index=True)
 
-                    required_sales_columns = [
-                        "판매일자",
-                        '상품코드',
-                        "가격",
-                        "판매수량"
-                    ]
+    #                 required_sales_columns = [
+    #                     "판매일자",
+    #                     '상품코드',
+    #                     "가격",
+    #                     "판매수량"
+    #                 ]
 
-                    # 필요한 열이 모두 있는지 검사
-                    missing_columns = [column for column in required_sales_columns if column not in uploaded_sales.columns]
+    #                 # 필요한 열이 모두 있는지 검사
+    #                 missing_columns = [column for column in required_sales_columns if column not in uploaded_sales.columns]
 
-                    if missing_columns:
-                        st.error("CSV 파일에 다음 열이 없습니다: " + ", ".join(missing_columns))
-                    else:
-                        st.session_state.sales = update_sales_data(st.session_state.inventory, uploaded_sales)
+    #                 if missing_columns:
+    #                     st.error("CSV 파일에 다음 열이 없습니다: " + ", ".join(missing_columns))
+    #                 else:
+    #                     st.session_state.sales = update_sales_data(st.session_state.inventory, uploaded_sales)
                         
-                        st.session_state.sales_file_name = ', '.join(file.name for file in sales_files)
-                        st.success("파일을 불러왔습니다.")
-                        # sales_files = None
+    #                     st.session_state.sales_file_name = ', '.join(file.name for file in sales_files)
+    #                     st.success("파일을 불러왔습니다.")
+    #                     # sales_files = None
 
-                except Exception as error:
-                    st.error(f"파일을 읽는 중 오류가 발생했습니다: {error}")
+    #             except Exception as error:
+    #                 st.error(f"파일을 읽는 중 오류가 발생했습니다: {error}")
 
-    if st.session_state.sales_file_name != '':
-        st.write(f"등록된 매출 파일: {st.session_state.sales_file_name}")
+    # if st.session_state.sales_file_name != '':
+    #     st.write(f"등록된 매출 파일: {st.session_state.sales_file_name}")
 
 
     st.divider()
@@ -192,11 +202,11 @@ sales_df = st.session_state.sales
 #     "🚚 입출고",
 #     "📝 일괄 편집"
 # ])
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "📊 현황",
     "🔎 재고 조회",
-    "🚚 입출고",
-    "📈 매출 분석"
+    "🚚 입출고"
+    # "📈 매출 분석"
 ])
 # 매출 분석 탭: 인기상품 Top 10(가로막대), 일별 매출 추이(line), 분류별 매출 추이(bar), 요일별 매출(bar), 가격과 판매량의 관계(scatter)
 # 열: 판매일자, 상품코드, 상품명, 분류, 가격, 판매수량
@@ -365,24 +375,53 @@ with tab2:
     if len(store_df) > 0:
         search_col1, search_col2 = st.columns(2)
 
+        category_options = sorted(store_df["분류"].unique())
+        maximum_price = int(store_df["가격"].max())
+
+        # 상품 CSV를 처음 불러왔거나 상품 구성이 바뀐 경우 기본값 설정
+        if not st.session_state.search_categories:
+            st.session_state.search_categories = category_options
+        else:
+            # 현재 상품 데이터에 존재하지 않는 분류는 제거
+            st.session_state.search_categories = [
+                category for category in st.session_state.search_categories
+                if category in category_options
+            ]
+
+        if st.session_state.search_price_range is None:
+            st.session_state.search_price_range = (0, maximum_price)
+        else:
+            low, high = st.session_state.search_price_range
+            st.session_state.search_price_range = (
+                max(0, min(low, maximum_price)),
+                max(0, min(high, maximum_price))
+            )
+
         with search_col1:
-            keyword = st.text_input("상품명 검색", placeholder="상품명의 일부를 입력하세요.")
-            category_options = sorted(store_df["분류"].unique())
-            selected_categories = st.multiselect("분류 선택", options=category_options, default=category_options)
+            keyword = st.text_input(
+                "상품명 검색",
+                placeholder="상품명의 일부를 입력하세요.",
+                key="search_keyword"
+            )
+            selected_categories = st.multiselect(
+                "분류 선택",
+                options=category_options,
+                key="search_categories"
+            )
 
         with search_col2:
-            maximum_price = int(store_df["가격"].max())
             price_range = st.slider(
                 "가격 범위",
                 min_value=0,
                 max_value=maximum_price,
-                value=(0, maximum_price),
-                step=100
+                step=100,
+                key="search_price_range"
             )
             stock_status = st.radio(
                 "재고 상태",
                 options=["전체", "정상", "부족", "품절"],
-                horizontal=True
+                horizontal=True,
+                key="search_stock_status"
             )
 
         # 원본 DataFrame 복사
@@ -765,123 +804,123 @@ with tab3:
 # ==================================================
 # 탭 4. 매출 분석
 # ==================================================
-with tab4:
-    st.subheader("📈 매출 분석")
+# with tab4:
+#     st.subheader("📈 매출 분석")
 
-    if len(sales_df) == 0:
-        st.info("사이드바에서 매출 CSV 파일을 불러와 주세요.")
+#     if len(sales_df) == 0:
+#         st.info("사이드바에서 매출 CSV 파일을 불러와 주세요.")
 
-    else:
-        # --------------------------------------------------
-        # 기본 매출 통계
-        # --------------------------------------------------
-        total_sales = sales_df["매출액"].sum()
-        total_quantity = sales_df["판매수량"].sum()
-        order_count = len(sales_df)
+#     else:
+#         # --------------------------------------------------
+#         # 기본 매출 통계
+#         # --------------------------------------------------
+#         total_sales = sales_df["매출액"].sum()
+#         total_quantity = sales_df["판매수량"].sum()
+#         order_count = len(sales_df)
 
-        col1, col2, col3 = st.columns(3)
+#         col1, col2, col3 = st.columns(3)
 
-        col1.metric(
-            "총 매출",
-            f"{total_sales:,.0f}원"
-        )
-        col2.metric(
-            "총 판매수량",
-            f"{total_quantity:,.0f}개"
-        )
-        col3.metric(
-            "판매 기록",
-            f"{order_count:,}건"
-        )
+#         col1.metric(
+#             "총 매출",
+#             f"{total_sales:,.0f}원"
+#         )
+#         col2.metric(
+#             "총 판매수량",
+#             f"{total_quantity:,.0f}개"
+#         )
+#         col3.metric(
+#             "판매 기록",
+#             f"{order_count:,}건"
+#         )
 
-        st.divider()
+#         st.divider()
 
-        # --------------------------------------------------
-        # 1. 인기상품 Top 10
-        # --------------------------------------------------
-        st.markdown("#### 🏆 인기상품 Top 10")
+#         # --------------------------------------------------
+#         # 1. 인기상품 Top 10
+#         # --------------------------------------------------
+#         st.markdown("#### 🏆 인기상품 Top 10")
 
-        top_products = (
-            sales_df
-            .groupby("상품명")["판매수량"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(10)
-        )
+#         top_products = (
+#             sales_df
+#             .groupby("상품명")["판매수량"]
+#             .sum()
+#             .sort_values(ascending=False)
+#             .head(10)
+#         )
 
-        st.bar_chart(top_products, horizontal=True)
+#         st.bar_chart(top_products, horizontal=True)
 
-        st.divider()
+#         st.divider()
 
-        # --------------------------------------------------
-        # 2. 일별 매출 추이
-        # --------------------------------------------------
-        st.markdown("#### 📅 일별 매출 추이")
+#         # --------------------------------------------------
+#         # 2. 일별 매출 추이
+#         # --------------------------------------------------
+#         st.markdown("#### 📅 일별 매출 추이")
 
-        daily_sales = (
-            sales_df
-            .groupby("판매일자")["매출액"]
-            .sum()
-            .sort_index()
-        )
+#         daily_sales = (
+#             sales_df
+#             .groupby("판매일자")["매출액"]
+#             .sum()
+#             .sort_index()
+#         )
 
-        st.line_chart(daily_sales)
+#         st.line_chart(daily_sales)
 
-        st.divider()
+#         st.divider()
 
-        # --------------------------------------------------
-        # 3. 분류별 매출
-        # --------------------------------------------------
-        st.markdown("#### 📦 분류별 매출")
+#         # --------------------------------------------------
+#         # 3. 분류별 매출
+#         # --------------------------------------------------
+#         st.markdown("#### 📦 분류별 매출")
 
-        category_sales = (
-            sales_df
-            .groupby("분류")["매출액"]
-            .sum()
-            .sort_values(ascending=False)
-        )
+#         category_sales = (
+#             sales_df
+#             .groupby("분류")["매출액"]
+#             .sum()
+#             .sort_values(ascending=False)
+#         )
 
-        st.bar_chart(category_sales)
+#         st.bar_chart(category_sales)
 
-        st.divider()
+#         st.divider()
 
-        # --------------------------------------------------
-        # 4. 요일별 매출
-        # --------------------------------------------------
-        st.markdown("#### 📆 요일별 매출")
+#         # --------------------------------------------------
+#         # 4. 요일별 매출
+#         # --------------------------------------------------
+#         st.markdown("#### 📆 요일별 매출")
 
-        # 요일 번호
-        # 월요일 = 0, 화요일 = 1, ..., 일요일 = 6
-        sales_df["요일번호"] = sales_df["판매일자"].dt.dayofweek
+#         # 요일 번호
+#         # 월요일 = 0, 화요일 = 1, ..., 일요일 = 6
+#         sales_df["요일번호"] = sales_df["판매일자"].dt.dayofweek
 
-        weekday_sales = (
-            sales_df
-            .groupby("요일번호")["매출액"]
-            .sum()
-            .reindex(range(7), fill_value=0)
-        )
+#         weekday_sales = (
+#             sales_df
+#             .groupby("요일번호")["매출액"]
+#             .sum()
+#             .reindex(range(7), fill_value=0)
+#         )
 
-        weekday_sales.index = [
-            "월",
-            "화",
-            "수",
-            "목",
-            "금",
-            "토",
-            "일"
-        ]
+#         weekday_sales.index = [
+#             "월",
+#             "화",
+#             "수",
+#             "목",
+#             "금",
+#             "토",
+#             "일"
+#         ]
 
-        st.bar_chart(weekday_sales)
+#         st.bar_chart(weekday_sales)
 
-        st.divider()
+#         st.divider()
 
-        # --------------------------------------------------
-        # 5. 가격과 판매량의 관계
-        # --------------------------------------------------
-        st.markdown("#### 🔍 가격과 판매량의 관계")
+#         # --------------------------------------------------
+#         # 5. 가격과 판매량의 관계
+#         # --------------------------------------------------
+#         st.markdown("#### 🔍 가격과 판매량의 관계")
 
-        st.scatter_chart(
-            sales_df,
-            x="가격",
-            y="판매수량"
-        )
+#         st.scatter_chart(
+#             sales_df,
+#             x="가격",
+#             y="판매수량"
+#         )
