@@ -832,12 +832,12 @@ with tab4:
         st.markdown("#### 🏆 인기상품 Top 10")
 
         top_products = (
-            sales_df
-            .groupby("상품명")["판매수량"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(10)
-        )
+                            sales_df
+                            .groupby("상품명")["판매수량"]
+                            .sum()
+                            .sort_values(ascending=False)
+                            .head(10)
+                        )
 
         st.bar_chart(top_products, horizontal=True)
 
